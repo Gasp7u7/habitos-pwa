@@ -2,8 +2,9 @@ import type {Metadata, Viewport} from 'next';
 import './globals.css';
 
 export const metadata: Metadata = {
-  title: 'Wellness App',
-  description: 'MVP de bienestar personal',
+  title: 'Hábitos PWA',
+  description: 'Tu compañero de gym, caminatas y escaladas',
+  manifest: '/manifest.json',
 };
 
 export const viewport: Viewport = {
@@ -12,7 +13,7 @@ export const viewport: Viewport = {
   maximumScale: 1,
   userScalable: false,
   viewportFit: 'cover',
-  themeColor: '#ffffff',
+  themeColor: '#D4F87A',
 };
 
 export default function RootLayout({children}: {children: React.ReactNode}) {

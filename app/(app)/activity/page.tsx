@@ -283,7 +283,7 @@ function ActivityContent() {
           <button 
             onClick={async () => {
               endActivity(effort, 'normal', notes);
-              createActivityLog({ ...currentActivity, perceivedEffort: effort as any, notes, status: 'completed' });
+              createActivityLog({ ...currentActivity, perceivedEffort: effort as any, notes, status: 'completed' }).catch(console.error);
               router.push('/workouts');
             }}
             className="flex-[2] py-4 font-bold text-white bg-gray-900 rounded-2xl shadow-lg active:scale-95 transition-transform"

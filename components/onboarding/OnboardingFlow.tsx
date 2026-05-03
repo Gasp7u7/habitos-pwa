@@ -36,6 +36,9 @@ const FASTING = [
   { id: 'omad', title: 'OMAD', desc: 'Una comida al día' },
 ];
 
+import { updateProfile as updateSupabaseProfile } from '@/lib/supabase/profile';
+import { createClient } from '@/lib/supabase/client';
+
 export default function OnboardingFlow() {
   const { profile, updateProfile } = useAppStore();
   
@@ -53,21 +56,57 @@ export default function OnboardingFlow() {
     if (step < 6) setStep(step + 1);
   };
 
-  const finishOnboarding = () => {
+  const finishOnboarding = async () => {
     setIsFinishing(true);
-    // Fake delay to show "AI configuring"
-    setTimeout(() => {
-      updateProfile({
-        name,
-        weightKg: weight ? parseFloat(weight) : undefined,
-        heightCm: height ? parseFloat(height) : undefined,
-        primaryGoal,
-        dietType,
-        fastingSchedule,
-        areasForImprovement: areas,
-        hasCompletedOnboarding: true,
-      });
-    }, 2000);
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    
+    const profileData = {
+      display_name: name,
+      height_cm: height ? parseFloat(height) : null,
+      weight_kg: weight ? parseFloat(weight) : null,
+      primary_goal: primaryGoal,
+      diet_type: dietType,
+      fasting_schedule: fastingSchedule,
+      has_completed_onboarding: true,
+      daily_water_ml: 2500,
+      daily_calories: 2200,
+      daily_activity_minutes: 45,
+    };
+
+    // Guardar en Supabase
+    if (user) {
+      try {
+        await updateSupabaseProfile(user.id, profileData);
+        
+        // Si tiene peso inicial, guardar en weight_logs
+        if (weight) {
+          await (supabase.from('weight_logs') as any).insert({
+            user_id: user.id,
+            weight_kg: parseFloat(weight),
+          });
+        }
+      } catch (error) {
+        console.error(error)
+      }
+    }
+
+    // Actualizar store local
+    updateProfile({
+      name,
+      weightKg: weight ? parseFloat(weight) : undefined,
+      heightCm: height ? parseFloat(height) : undefined,
+      primaryGoal,
+      dietType,
+      fastingSchedule,
+      areasForImprovement: areas,
+      hasCompletedOnboarding: true,
+      dailyGoals: {
+        waterMl: profileData.daily_water_ml,
+        calories: profileData.daily_calories,
+        activityMinutes: profileData.daily_activity_minutes,
+      }
+    });
   };
 
   const toggleArea = (id: string) => {

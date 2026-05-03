@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { ActivityEntry, MealEntry, WaterEntry, UserProfile, DeviceConnection, FastingEntry, Exercise, Routine } from './types';
 import { addDays, subDays } from 'date-fns';
+import { insertWaterLog, deleteWaterLog, insertMealLog, deleteMealLog, insertFastingLog, endFastingLog } from './supabase/logs';
 
 type AppState = {
   profile: UserProfile;
@@ -19,6 +20,7 @@ type AppState = {
   activeRoutine: Routine | null;
   
   // Actions
+  hydrateFromSupabase: (water: WaterEntry[], meals: MealEntry[], fast: FastingEntry | null, activities: ActivityEntry[]) => void;
   setActiveRoutine: (routine: Routine | null) => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
   addWater: (amount?: number) => void;
@@ -41,7 +43,7 @@ type AppState = {
   appendActivityRoute: (point: { latitude: number; longitude: number; timestamp: number; [key: string]: any }) => void;
 };
 
-// Initial mock data based on prompt requirements
+// ... initial data removed for brevity in this replace string, just replacing the type block and methods
 const initialProfile: UserProfile = {
   id: 'user_1',
   name: 'Paul',
@@ -85,27 +87,8 @@ export const useAppStore = create<AppState>()(
     (set, get) => ({
       profile: initialProfile,
       activities: initialActivities,
-      meals: [
-        {
-          id: 'meal_1',
-          userId: 'user_1',
-          name: 'Huevos revueltos con tostadas',
-          calories: 450,
-          protein: 24,
-          carbs: 35,
-          fat: 20,
-          loggedAt: new Date().toISOString(),
-          isAiGenerated: true,
-        }
-      ],
-      water: [
-        {
-          id: 'water_1',
-          userId: 'user_1',
-          amountMl: 500,
-          loggedAt: new Date().toISOString(),
-        }
-      ],
+      meals: [],
+      water: [],
       deviceConnections: [],
       fastingHistory: [],
       customExercises: [],
@@ -114,6 +97,13 @@ export const useAppStore = create<AppState>()(
       currentActivity: null,
       currentFast: null,
       activeRoutine: null,
+
+      hydrateFromSupabase: (water, meals, fast, activities) => set((state) => ({
+        water,
+        meals,
+        currentFast: fast || state.currentFast,
+        activities: activities.length > 0 ? activities : state.activities
+      })),
 
       setActiveRoutine: (routine) => set({ activeRoutine: routine }),
 
@@ -129,54 +119,97 @@ export const useAppStore = create<AppState>()(
         customRoutines: [...state.customRoutines, { ...routine, id: `cr_${Date.now()}`, isCustom: true }]
       })),
 
-      startFast: (targetHours) => set((state) => ({
-        currentFast: {
-          id: `f_${Date.now()}`,
-          userId: state.profile.id,
-          startedAt: new Date().toISOString(),
-          targetHours,
-          status: 'active'
-        }
-      })),
+      startFast: (targetHours) => {
+        const state = get();
+        insertFastingLog(state.profile.id, targetHours).then(({ data, error }) => {
+          if (data && !error) {
+            set({
+              currentFast: {
+                id: data.id,
+                userId: state.profile.id,
+                startedAt: data.started_at,
+                targetHours,
+                status: 'active'
+              }
+            })
+          }
+        }).catch(console.error);
+        
+        // Optimistic
+        set((s) => ({
+          currentFast: {
+            id: `temp_${Date.now()}`, // will be overwritten by response
+            userId: s.profile.id,
+            startedAt: new Date().toISOString(),
+            targetHours,
+            status: 'active'
+          }
+        }));
+      },
 
-      endFast: (status) => set((state) => {
-        if (!state.currentFast) return state;
+      endFast: (status) => {
+        const state = get();
+        if (!state.currentFast) return;
+        
+        if (!state.currentFast.id.startsWith('temp_')) {
+          endFastingLog(state.currentFast.id, status).catch(console.error);
+        }
+
         const endedFast: FastingEntry = {
           ...state.currentFast,
           endedAt: new Date().toISOString(),
           status
         };
-        return {
+        
+        set((s) => ({
           currentFast: null,
-          fastingHistory: [...state.fastingHistory, endedFast]
-        };
-      }),
+          fastingHistory: [...s.fastingHistory, endedFast]
+        }));
+      },
 
-      addWater: (amount) => set((state) => ({
-        water: [...state.water, {
-          id: `w_${Date.now()}`,
-          userId: state.profile.id,
-          amountMl: amount || state.profile.glassSizeMl || 250,
-          loggedAt: new Date().toISOString()
-        }]
-      })),
+      addWater: (amount) => {
+        const state = get();
+        const amountMl = amount || state.profile.glassSizeMl || 250;
+        
+        insertWaterLog(state.profile.id, amountMl).catch(console.error);
+        
+        set((s) => ({
+          water: [...s.water, {
+            id: `w_${Date.now()}`, // Would be better to use real UUID from Supabase but UI updates optimistically
+            userId: s.profile.id,
+            amountMl,
+            loggedAt: new Date().toISOString()
+          }]
+        }));
+      },
 
-      addMeal: (meal) => set((state) => ({
-        meals: [...state.meals, {
-          ...meal,
-          id: `m_${Date.now()}`,
-          userId: state.profile.id,
-          loggedAt: new Date().toISOString()
-        }]
-      })),
+      addMeal: (meal) => {
+        const state = get();
+        insertMealLog(state.profile.id, meal).catch(console.error);
+        
+        set((s) => ({
+          meals: [...s.meals, {
+            ...meal,
+            id: `m_${Date.now()}`,
+            userId: s.profile.id,
+            loggedAt: new Date().toISOString()
+          }]
+        }));
+      },
 
-      deleteMeal: (id) => set((state) => ({
-        meals: state.meals.filter(m => m.id !== id)
-      })),
+      deleteMeal: (id) => {
+        deleteMealLog(id).catch(console.error);
+        set((state) => ({
+          meals: state.meals.filter(m => m.id !== id)
+        }));
+      },
 
-      deleteWater: (id) => set((state) => ({
-        water: state.water.filter(w => w.id !== id)
-      })),
+      deleteWater: (id) => {
+        deleteWaterLog(id).catch(console.error);
+        set((state) => ({
+          water: state.water.filter(w => w.id !== id)
+        }));
+      },
 
       startActivity: (type) => set((state) => ({
         currentActivity: {

@@ -9,15 +9,20 @@ export default function RegisterPage() {
   const router = useRouter();
   const supabase = createClient();
 
-  const handleRegister = async (e: React.FormEvent) => {
+  const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
+    const formData = new FormData(e.currentTarget);
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    const name = formData.get('name') as string;
+
     const { error } = await supabase.auth.signUp({
-      email: arguments[0].target.email.value,
-      password: arguments[0].target.password.value,
+      email,
+      password,
       options: {
         data: {
-          display_name: arguments[0].target.name.value,
+          display_name: name,
         }
       }
     });

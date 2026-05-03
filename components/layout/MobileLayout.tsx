@@ -11,18 +11,114 @@ import AddMealModal from '../modals/AddMealModal';
 import AiMealModal from '../modals/AiMealModal';
 import WeightModal from '../modals/WeightModal';
 
+import { createClient } from '@/lib/supabase/client';
+import { getProfile } from '@/lib/supabase/profile';
+import { getTodayLogs, getRecentActivities } from '@/lib/supabase/logs';
+
 export default function MobileLayout({ children }: { children: ReactNode }) {
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [isAddMealOpen, setIsAddMealOpen] = useState(false);
   const [isAiMealOpen, setIsAiMealOpen] = useState(false);
   const [isWeightOpen, setIsWeightOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
-  const { profile } = useAppStore();
+  const { profile, updateProfile, hydrateFromSupabase } = useAppStore();
   const router = useRouter();
 
   useEffect(() => {
-    const t = setTimeout(() => setMounted(true), 0);
-    return () => clearTimeout(t);
+    const loadData = async () => {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setMounted(true); return; }
+      
+      try {
+        const [profileData, todayData, recentActivitiesData] = await Promise.all([
+          getProfile(user.id).catch(() => null),
+          getTodayLogs(user.id).catch(() => ({ water: [], meals: [], fasting: null })),
+          getRecentActivities(user.id).catch(() => ({ data: [] }))
+        ]);
+
+        if (profileData) {
+          updateProfile({
+            id: user.id,
+            name: profileData.display_name,
+            email: profileData.email,
+            heightCm: profileData.height_cm || undefined,
+            weightKg: profileData.weight_kg || undefined,
+            primaryGoal: profileData.primary_goal || undefined,
+            dietType: profileData.diet_type || undefined,
+            fastingSchedule: profileData.fasting_schedule || undefined,
+            hasCompletedOnboarding: profileData.has_completed_onboarding || false,
+            dailyGoals: {
+              waterMl: profileData.daily_water_ml || 2500,
+              calories: profileData.daily_calories || 2200,
+              activityMinutes: profileData.daily_activity_minutes || 45,
+            },
+            glassSizeMl: profileData.glass_size_ml || 250,
+          });
+        }
+
+        if (todayData.water || todayData.meals || todayData.fasting) {
+          const mappedWater = (todayData.water || []).map(w => ({
+            id: w.id,
+            userId: w.user_id,
+            amountMl: w.amount_ml,
+            loggedAt: w.logged_at || new Date().toISOString()
+          }));
+
+          const mappedMeals = (todayData.meals || []).map(m => ({
+            id: m.id,
+            userId: m.user_id,
+            name: m.name,
+            description: m.description || undefined,
+            calories: m.calories,
+            protein: m.protein_g || 0,
+            carbs: m.carbs_g || 0,
+            fat: m.fat_g || 0,
+            loggedAt: m.logged_at || new Date().toISOString(),
+            isAiGenerated: !!m.is_ai_generated
+          }));
+
+          const mappedFast = todayData.fasting ? {
+            id: todayData.fasting.id,
+            userId: todayData.fasting.user_id,
+            startedAt: todayData.fasting.started_at,
+            targetHours: todayData.fasting.target_hours,
+            status: todayData.fasting.status as 'active' | 'completed' | 'early'
+          } : null;
+
+          const mappedActivities = (recentActivitiesData?.data || []).map(a => ({
+            id: a.id,
+            userId: a.user_id,
+            type: a.type as any,
+            source: a.source as any,
+            status: a.status as any,
+            startedAt: a.started_at,
+            endedAt: a.ended_at || a.started_at,
+            durationSeconds: a.duration_seconds || 0,
+            movingTimeSeconds: a.duration_seconds || 0,
+            distanceMeters: (a.distance_meters || 0),
+            avgPaceSecondsPerKm: a.avg_pace_seconds_per_km || 0,
+            avgSpeedKmh: a.avg_speed_kmh || 0,
+            estimatedCalories: a.estimated_calories || 0,
+            route: a.gps_routes && a.gps_routes.length > 0 ? a.gps_routes[0].route_geojson?.coordinates?.map((c: any) => ({
+                longitude: c[0], latitude: c[1]
+            })) || [] : [],
+            createdAt: a.created_at || a.started_at,
+            updatedAt: a.updated_at || a.started_at,
+            mood: a.mood as any,
+            perceivedEffort: a.perceived_effort as any,
+            notes: a.notes || undefined
+          }));
+
+          hydrateFromSupabase(mappedWater, mappedMeals, mappedFast, mappedActivities);
+        }
+
+      } catch (e) {
+        // Fallback a local
+      }
+      setMounted(true);
+    };
+    loadData();
   }, []);
 
   if (!mounted) {

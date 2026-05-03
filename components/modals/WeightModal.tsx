@@ -4,6 +4,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Scale } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 
+import { createClient } from '@/lib/supabase/client';
+
 interface WeightModalProps {
   isOpen: boolean;
   onClose: () => void;
@@ -20,12 +22,28 @@ export default function WeightModal({ isOpen, onClose }: WeightModalProps) {
     }
   }, [isOpen, profile]);
 
-  const handleSave = () => {
-    if (!weight) return;
+  const handleSave = async () => {
+    const weightNum = parseFloat(weight);
+    if (!weight || isNaN(weightNum)) return;
     
     updateProfile({
-      weightKg: parseFloat(weight)
+      weightKg: weightNum
     });
+    
+    // Guardar en historial
+    const supabase = createClient();
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      await (supabase.from('weight_logs') as any).insert({
+        user_id: user.id,
+        weight_kg: weightNum,
+      });
+      // También actualizar el perfil en Supabase
+      await (supabase.from('profiles') as any)
+        .update({ weight_kg: weightNum })
+        .eq('id', user.id);
+    }
+    
     onClose();
   };
 
