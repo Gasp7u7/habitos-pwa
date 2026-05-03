@@ -38,6 +38,7 @@ type AppState = {
   endActivity: (perceivedEffort?: number, mood?: string, notes?: string) => void;
   discardActivity: () => void;
   updateCurrentActivityMetrics: (distance: number, duration: number, pace: number) => void;
+  appendActivityRoute: (point: { latitude: number; longitude: number; timestamp: number; [key: string]: any }) => void;
 };
 
 // Initial mock data based on prompt requirements
@@ -239,6 +240,17 @@ export const useAppStore = create<AppState>()(
             durationSeconds: duration,
             avgPaceSecondsPerKm: pace,
             updatedAt: new Date().toISOString()
+          }
+        };
+      }),
+
+      appendActivityRoute: (point) => set((state) => {
+        if (!state.currentActivity) return state;
+        return {
+          currentActivity: {
+             ...state.currentActivity,
+             route: [...(state.currentActivity.route || []), point],
+             updatedAt: new Date().toISOString()
           }
         };
       }),

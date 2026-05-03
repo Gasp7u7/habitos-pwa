@@ -31,7 +31,7 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
 
   if (!profile.hasCompletedOnboarding) {
     return (
-      <div className="flex h-screen w-full justify-center bg-gray-100 overflow-hidden font-sans">
+      <div className="flex h-[100dvh] w-full justify-center bg-gray-100 overflow-hidden font-sans">
         <div className="relative w-full h-full max-w-md bg-white shadow-2xl flex flex-col overflow-hidden">
           <OnboardingFlow />
         </div>
@@ -40,11 +40,11 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
   }
   
   return (
-    <div className="flex h-screen w-full justify-center bg-gray-100 overflow-hidden font-sans">
+    <div className="flex h-[100dvh] w-full justify-center bg-gray-100 overflow-hidden font-sans">
       <div className="relative w-full h-full max-w-md bg-white shadow-2xl flex flex-col overflow-hidden">
         
         {/* Main Content Area */}
-        <div className="flex-1 overflow-y-auto pb-20 scrollbar-hide">
+        <div className="flex-1 overflow-y-auto pb-[calc(100px+env(safe-area-inset-bottom))] scrollbar-hide">
           {children}
         </div>
 
@@ -157,7 +157,7 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
         <WeightModal isOpen={isWeightOpen} onClose={() => setIsWeightOpen(false)} />
 
         {/* Bottom Tab Bar */}
-        <div className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 flex justify-around items-center z-40 pb-safe pt-2 h-[64px]">
+        <div className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 flex justify-around items-center z-40 pt-2 pb-[calc(10px+env(safe-area-inset-bottom))] min-h-[72px]">
           <TabItem href="/" icon={<Home size={24} strokeWidth={2} />} label="Inicio" />
           <TabItem href="/diary" icon={<Utensils size={24} strokeWidth={2} />} label="Comidas" />
           

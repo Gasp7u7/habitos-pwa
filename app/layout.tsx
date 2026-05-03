@@ -1,19 +1,25 @@
-import type {Metadata} from 'next';
+import type {Metadata, Viewport} from 'next';
 import './globals.css';
-import MobileLayout from '@/components/layout/MobileLayout'; // Add layout import
 
 export const metadata: Metadata = {
-  title: 'My Google AI Studio App',
+  title: 'Wellness App',
   description: 'MVP de bienestar personal',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: 'cover',
+  themeColor: '#ffffff',
 };
 
 export default function RootLayout({children}: {children: React.ReactNode}) {
   return (
     <html lang="en">
       <body suppressHydrationWarning>
-        <MobileLayout>
-          {children}
-        </MobileLayout>
+        {children}
       </body>
     </html>
   );

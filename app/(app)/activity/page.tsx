@@ -1,16 +1,29 @@
 'use client';
-import { useState, useEffect, Suspense } from 'react';
+import { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAppStore } from '@/lib/store';
 import { Activity, MapPin, Play, Pause, Square, Map as MapIcon, Share2, Target, Zap, Dumbbell, Bike, PersonStanding, Flame, Clock, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { motion, AnimatePresence } from 'motion/react';
 import { DEFAULT_EXERCISES } from '@/components/workouts/ExerciseLibrary';
+import GpsPermissionState from '@/components/gps/GpsPermissionState';
+import LiveActivityStats from '@/components/gps/LiveActivityStats';
+import { GpsPoint } from '@/lib/gps/types';
+import { isValidGpsPoint, haversineDistanceMeters } from '@/lib/gps/tracker';
+
+import dynamic from 'next/dynamic';
+
+const RouteMap = dynamic(() => import('@/components/gps/RouteMap'), { ssr: false, loading: () => (
+  <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+    <span className="text-gray-400 font-medium text-sm">Cargando mapa...</span>
+  </div>
+) });
+
+import { createActivityLog } from '@/lib/mutations/createActivityLog';
 
 function ActivityContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { currentActivity, activeRoutine, customExercises, startActivity, pauseActivity, resumeActivity, endActivity, discardActivity, updateCurrentActivityMetrics } = useAppStore();
+  const { currentActivity, activeRoutine, customExercises, startActivity, pauseActivity, resumeActivity, endActivity, discardActivity, updateCurrentActivityMetrics, appendActivityRoute } = useAppStore();
   const initialType = (searchParams.get('type') as any) || 'walk';
   const [activityType, setActivityType] = useState<'walk' | 'run' | 'gym' | 'cycling'>(initialType);
   const [effort, setEffort] = useState<number>(3);
@@ -18,33 +31,76 @@ function ActivityContent() {
   const [gymSets, setGymSets] = useState(0);
   const [restTimer, setRestTimer] = useState<number | null>(null);
   
+  const [isGpsReady, setIsGpsReady] = useState(false);
+  const watchIdRef = useRef<number | null>(null);
+  const lastPointRef = useRef<GpsPoint | null>(null);
+  
   // Combine exercises for lookup
   const ALL_EXERCISES = [...DEFAULT_EXERCISES, ...customExercises];
   
-  // Timer simulation
   useEffect(() => {
     let interval: NodeJS.Timeout;
     if (currentActivity && currentActivity.status === 'active') {
       interval = setInterval(() => {
         const newDuration = currentActivity.durationSeconds + 1;
-        
-        let newDistance = currentActivity.distanceMeters;
-        let newPace = currentActivity.avgPaceSecondsPerKm;
-
-        if (currentActivity.type !== 'gym') {
-          let speedMultiplier = 1.4; // m/s (Walk)
-          if (currentActivity.type === 'run') speedMultiplier = 3.0;
-          if (currentActivity.type === 'cycling') speedMultiplier = 6.0;
-
-          newDistance = Math.floor(newDuration * speedMultiplier);
-          newPace = newDistance > 0 ? Math.floor((newDuration / newDistance) * 1000) : 0;
-        }
-
-        updateCurrentActivityMetrics(newDistance, newDuration, newPace);
+        updateCurrentActivityMetrics(currentActivity.distanceMeters, newDuration, currentActivity.avgPaceSecondsPerKm);
       }, 1000);
+      
+      // Start GPS Tracking if it's a GPS activity
+      if (currentActivity.type !== 'gym' && 'geolocation' in navigator && !watchIdRef.current) {
+        watchIdRef.current = navigator.geolocation.watchPosition(
+          (position) => {
+            if (currentActivity.status !== 'active') return;
+            
+            const newPoint = {
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              accuracy: position.coords.accuracy,
+              altitude: position.coords.altitude,
+              speed: position.coords.speed,
+              heading: position.coords.heading,
+              timestamp: position.timestamp,
+            };
+
+            if (isValidGpsPoint(position.coords, lastPointRef.current, currentActivity.type as any)) {
+              let addedDistance = 0;
+              if (lastPointRef.current) {
+                addedDistance = haversineDistanceMeters(
+                  lastPointRef.current.latitude,
+                  lastPointRef.current.longitude,
+                  newPoint.latitude,
+                  newPoint.longitude
+                );
+              }
+              
+              const newDistance = currentActivity.distanceMeters + addedDistance;
+              const newPace = newDistance > 0 ? Math.floor(currentActivity.durationSeconds / (newDistance / 1000)) : 0;
+              
+              updateCurrentActivityMetrics(newDistance, currentActivity.durationSeconds, newPace);
+              appendActivityRoute(newPoint);
+              lastPointRef.current = newPoint;
+            }
+          },
+          (error) => console.error("GPS Error:", error),
+          { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
+        );
+      }
+    } else {
+      // Clear interval and GPS if not active
+      if (watchIdRef.current) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
     }
-    return () => clearInterval(interval);
-  }, [currentActivity, updateCurrentActivityMetrics]);
+    
+    return () => {
+      clearInterval(interval);
+      if (watchIdRef.current && (!currentActivity || currentActivity.status !== 'active')) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+    };
+  }, [currentActivity, updateCurrentActivityMetrics, appendActivityRoute]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -83,6 +139,9 @@ function ActivityContent() {
 
   if (!currentActivity) {
     // STATE 1: BEFORE START
+    const requiresGps = activityType !== 'gym';
+    const canStart = !requiresGps || isGpsReady;
+
     return (
       <div className="p-6 bg-[#f8f9fa] min-h-full pb-32">
         <h1 className="text-2xl font-bold text-gray-900 mb-6 pt-4 tracking-tight">Actividad</h1>
@@ -102,6 +161,10 @@ function ActivityContent() {
           ))}
         </div>
 
+        {requiresGps && (
+          <GpsPermissionState onReady={() => setIsGpsReady(true)} />
+        )}
+
         <div className="bg-[#D4F87A] rounded-[32px] p-6 mb-8 text-center flex flex-col items-center shadow-sm relative overflow-hidden">
           <div className="w-16 h-16 bg-white/40 backdrop-blur-sm rounded-full flex items-center justify-center mb-4 border border-white/50">
             {activityType === 'gym' ? <Dumbbell size={32} strokeWidth={2.5} className="text-gray-900" /> : <Target size={32} strokeWidth={2.5} className="text-gray-900" />}
@@ -112,8 +175,12 @@ function ActivityContent() {
           </p>
           
           <button 
+            disabled={!canStart}
             onClick={() => startActivity(activityType)}
-            className="w-full bg-gray-900 text-white rounded-2xl py-4 font-bold text-lg flex justify-center items-center gap-2 active:scale-95 transition-transform shadow-md relative z-10"
+            className={cn(
+              "w-full rounded-2xl py-4 font-bold text-lg flex justify-center items-center gap-2 transition-all shadow-md relative z-10",
+              canStart ? "bg-gray-900 text-white hover:bg-black active:scale-95" : "bg-gray-300 text-gray-500 cursor-not-allowed"
+            )}
           >
             <Play size={20} className="fill-current" /> Iniciar {getLabel(activityType)}
           </button>
@@ -130,13 +197,17 @@ function ActivityContent() {
       <div className="p-6 pb-32 bg-[#f8f9fa] min-h-full overflow-y-auto">
         <h1 className="text-2xl font-bold text-gray-900 mb-6 pt-4">Resumen de {getLabel(currentActivity.type)}</h1>
         
-        {/* Map Preview */}
+        {/* Map Preview Placeholder - To be implemented with real GPS data */}
         {isGpsActive && (
-          <div className="w-full h-48 bg-gray-200 rounded-[24px] mb-6 overflow-hidden relative border border-gray-100 shadow-none">
-            <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/light-v11/static/path-5+f44-0.5(-73.985,40.748,-73.985,40.758)/auto/800x400?access_token=pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJDSFIteWxnIn0.example')] bg-cover bg-center" />
-            <div className="absolute bottom-3 right-3 bg-white/90 backdrop-blur-sm p-3 rounded-2xl shadow-sm cursor-pointer hover:bg-gray-50 transition-colors">
-               <Share2 size={20} className="text-gray-900" />
-            </div>
+          <div className="w-full h-48 bg-gray-200 rounded-[24px] mb-6 overflow-hidden relative border border-gray-100 flex items-center justify-center">
+            {currentActivity.route && currentActivity.route.length >= 2 ? (
+              <RouteMap geojson={{
+                type: 'LineString',
+                coordinates: currentActivity.route.map(p => [p.longitude, p.latitude])
+              }} />
+            ) : (
+              <span className="text-gray-400 font-medium text-sm">El mapa estará disponible al finalizar</span>
+            )}
           </div>
         )}
 
@@ -210,8 +281,9 @@ function ActivityContent() {
             Descartar
           </button>
           <button 
-            onClick={() => {
+            onClick={async () => {
               endActivity(effort, 'normal', notes);
+              createActivityLog({ ...currentActivity, perceivedEffort: effort as any, notes, status: 'completed' });
               router.push('/workouts');
             }}
             className="flex-[2] py-4 font-bold text-white bg-gray-900 rounded-2xl shadow-lg active:scale-95 transition-transform"
@@ -226,12 +298,8 @@ function ActivityContent() {
   // STATE 2: DURING ACTIVITY (active or paused)
   return (
     <div className="flex flex-col h-full bg-gray-900 text-white">
-      {/* Simulated Map Background if GPS, otherwise solid abstract background */}
-      {isGpsActive ? (
-        <div className="absolute inset-0 z-0 opacity-40 bg-[url('https://api.mapbox.com/styles/v1/mapbox/dark-v11/static/-73.985,40.748,14/800x800?access_token=pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJDSFIteWxnIn0.example')] bg-cover bg-center" />
-      ) : (
-        <div className="absolute inset-0 z-0 opacity-20 bg-gradient-to-b from-gray-800 to-black" />
-      )}
+      {/* Solid abstract background */}
+      <div className="absolute inset-0 z-0 opacity-20 bg-gradient-to-b from-gray-800 to-black" />
       
       <div className="relative z-10 flex flex-col h-full p-6">
         <div className="flex justify-between items-center pt-8 mb-auto">
@@ -249,42 +317,33 @@ function ActivityContent() {
           </div>
         </div>
 
-        <div className="flex-1 flex flex-col justify-center items-center mb-8">
-          <div className="text-[5rem] font-bold leading-none tracking-tighter mb-12 drop-shadow-lg tabular-nums">
-            {formatTime(currentActivity.durationSeconds)}
+        {isGpsActive ? (
+          <LiveActivityStats elapsedSeconds={currentActivity.durationSeconds} distanceMeters={currentActivity.distanceMeters} />
+        ) : (
+          <div className="flex-1 flex flex-col justify-center items-center mb-8">
+            <div className="text-[5rem] font-bold leading-none tracking-tighter mb-12 drop-shadow-lg tabular-nums">
+              {formatTime(currentActivity.durationSeconds)}
+            </div>
+            
+            <div className="bg-black/40 backdrop-blur-md rounded-[32px] p-6 grid grid-cols-2 w-full gap-8 border border-white/10 relative mt-4">
+              {restTimer !== null && restTimer > 0 && (
+                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-indigo-500 text-white px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 shadow-lg animate-pulse">
+                  <Clock size={14} /> Descanso: {restTimer}s
+                </div>
+              )}
+               <>
+                  <div className="text-center">
+                    <span className="block text-4xl font-bold mb-1">{gymSets}</span>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Series</span>
+                  </div>
+                  <div className="text-center">
+                    <span className="block text-4xl font-bold mb-1">{Math.floor(currentActivity.durationSeconds * 0.1)}</span>
+                    <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Kcal</span>
+                  </div>
+                </>
+            </div>
           </div>
-          
-          <div className="bg-black/40 backdrop-blur-md rounded-[32px] p-6 grid grid-cols-2 w-full gap-8 border border-white/10 relative mt-4">
-            {restTimer !== null && restTimer > 0 && (
-              <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-indigo-500 text-white px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 shadow-lg animate-pulse">
-                <Clock size={14} /> Descanso: {restTimer}s
-              </div>
-            )}
-            {isGpsActive ? (
-              <>
-                <div className="text-center">
-                  <span className="block text-4xl font-bold mb-1">{(currentActivity.distanceMeters / 1000).toFixed(2)}</span>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Kilómetros</span>
-                </div>
-                <div className="text-center">
-                  <span className="block text-4xl font-bold mb-1">{formatPace(currentActivity.avgPaceSecondsPerKm)}</span>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Ritmo (/km)</span>
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="text-center">
-                  <span className="block text-4xl font-bold mb-1">{gymSets}</span>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Series</span>
-                </div>
-                <div className="text-center">
-                  <span className="block text-4xl font-bold mb-1">{Math.floor(currentActivity.durationSeconds * 0.1)}</span>
-                  <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Kcal</span>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+        )}
 
         {/* Action Buttons for Gym mode */}
         {!isGpsActive && currentActivity.status === 'active' && (

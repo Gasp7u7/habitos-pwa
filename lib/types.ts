@@ -50,13 +50,13 @@ export type ActivitySource =
   | "huawei_health";
 
 export type RoutePoint = {
-  lat: number;
-  lng: number;
+  latitude: number;
+  longitude: number;
   accuracy?: number;
   altitude?: number;
   speed?: number;
   heading?: number;
-  timestamp: string;
+  timestamp: string | number;
 };
 
 export type ActivityEntry = {

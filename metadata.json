@@ -1,6 +1,6 @@
 {
-  "name": "",
-  "description": "",
+  "name": "Social Habit Tracker",
+  "description": "SaaS MVP para registrar peso, alimentación con IA, ejercicio y progreso grupal.",
   "requestFramePermissions": [],
   "majorCapabilities": []
 }

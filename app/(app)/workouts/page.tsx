@@ -6,6 +6,13 @@ import { format, isThisWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import ExerciseLibrary from '@/components/workouts/ExerciseLibrary';
+import dynamic from 'next/dynamic';
+
+const RouteMap = dynamic(() => import('@/components/gps/RouteMap'), { ssr: false, loading: () => (
+  <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+    <span className="text-gray-400 font-medium text-sm">Cargando mapa...</span>
+  </div>
+) });
 
 export default function WorkoutsPage() {
   const { activities } = useAppStore();
@@ -183,7 +190,18 @@ export default function WorkoutsPage() {
               {/* Map/Image */}
               {isGpsActivity && (
                 <div className="w-full h-48 bg-gray-100 relative overflow-hidden">
-                  <div className="absolute inset-0 bg-[url('https://api.mapbox.com/styles/v1/mapbox/light-v11/static/path-5+f44-0.5(-73.985,40.748,-73.985,40.758)/auto/800x400?access_token=pk.eyJ1IjoiZXhhbXBsZSIsImEiOiJDSFIteWxnIn0.example')] bg-cover bg-center" />
+                  {activity.route && activity.route.length >= 2 ? (
+                     <div className="w-full h-full pointer-events-none">
+                       <RouteMap geojson={{
+                         type: 'LineString',
+                         coordinates: activity.route.map(p => [p.longitude, p.latitude])
+                       }} />
+                     </div>
+                  ) : (
+                     <div className="absolute inset-0 flex items-center justify-center">
+                        <span className="text-gray-400 font-medium text-xs">Sin mapa</span>
+                     </div>
+                  )}
                 </div>
               )}
               
