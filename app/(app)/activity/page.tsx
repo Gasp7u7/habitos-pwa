@@ -38,19 +38,21 @@ function ActivityContent() {
   // Combine exercises for lookup
   const ALL_EXERCISES = [...DEFAULT_EXERCISES, ...customExercises];
   
+  const startTimeRef = useRef<number | null>(null);
+  const pausedDurationRef = useRef<number>(0);
+  const currentActivityRef = useRef(currentActivity);
+
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (currentActivity && currentActivity.status === 'active') {
-      interval = setInterval(() => {
-        const newDuration = currentActivity.durationSeconds + 1;
-        updateCurrentActivityMetrics(currentActivity.distanceMeters, newDuration, currentActivity.avgPaceSecondsPerKm);
-      }, 1000);
-      
-      // Start GPS Tracking if it's a GPS activity
-      if (currentActivity.type !== 'gym' && 'geolocation' in navigator && !watchIdRef.current) {
+    currentActivityRef.current = currentActivity;
+  }, [currentActivity]);
+
+  // Keep track of GPS
+  useEffect(() => {
+    if (currentActivity?.status === 'active' && currentActivity.type !== 'gym' && 'geolocation' in navigator && !watchIdRef.current) {
         watchIdRef.current = navigator.geolocation.watchPosition(
           (position) => {
-            if (currentActivity.status !== 'active') return;
+            const current = currentActivityRef.current;
+            if (current?.status !== 'active') return;
             
             const newPoint = {
               latitude: position.coords.latitude,
@@ -62,7 +64,7 @@ function ActivityContent() {
               timestamp: position.timestamp,
             };
 
-            if (isValidGpsPoint(position.coords, lastPointRef.current, currentActivity.type as any)) {
+            if (isValidGpsPoint(position.coords, lastPointRef.current, current.type as any)) {
               let addedDistance = 0;
               if (lastPointRef.current) {
                 addedDistance = haversineDistanceMeters(
@@ -73,10 +75,10 @@ function ActivityContent() {
                 );
               }
               
-              const newDistance = currentActivity.distanceMeters + addedDistance;
-              const newPace = newDistance > 0 ? Math.floor(currentActivity.durationSeconds / (newDistance / 1000)) : 0;
+              const newDistance = current.distanceMeters + addedDistance;
+              const newPace = newDistance > 0 ? Math.floor(current.durationSeconds / (newDistance / 1000)) : 0;
               
-              updateCurrentActivityMetrics(newDistance, currentActivity.durationSeconds, newPace);
+              updateCurrentActivityMetrics(newDistance, current.durationSeconds, newPace);
               appendActivityRoute(newPoint);
               lastPointRef.current = newPoint;
             }
@@ -84,23 +86,54 @@ function ActivityContent() {
           (error) => console.error("GPS Error:", error),
           { enableHighAccuracy: true, maximumAge: 1000, timeout: 10000 }
         );
-      }
-    } else {
-      // Clear interval and GPS if not active
-      if (watchIdRef.current) {
+    } else if (currentActivity?.status !== 'active' && watchIdRef.current) {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
-      }
     }
     
     return () => {
-      clearInterval(interval);
-      if (watchIdRef.current && (!currentActivity || currentActivity.status !== 'active')) {
+      if (watchIdRef.current && currentActivity?.status !== 'active') {
         navigator.geolocation.clearWatch(watchIdRef.current);
         watchIdRef.current = null;
       }
     };
-  }, [currentActivity, updateCurrentActivityMetrics, appendActivityRoute]);
+  }, [currentActivity?.status, currentActivity?.type, updateCurrentActivityMetrics, appendActivityRoute]);
+
+  // Keep track of timer interval
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (currentActivity?.status === 'active') {
+      if (!startTimeRef.current) {
+         startTimeRef.current = Date.now();
+         pausedDurationRef.current = currentActivity.durationSeconds || 0;
+      }
+      
+      interval = setInterval(() => {
+        if (startTimeRef.current && currentActivityRef.current) {
+           const elapsed = Math.floor((Date.now() - startTimeRef.current) / 1000);
+           const totalDuration = pausedDurationRef.current + elapsed;
+           const currentPace = currentActivityRef.current.distanceMeters > 0 
+              ? Math.floor(totalDuration / (currentActivityRef.current.distanceMeters / 1000))
+              : 0;
+              
+           updateCurrentActivityMetrics(
+             currentActivityRef.current.distanceMeters, 
+             totalDuration, 
+             currentPace
+           );
+        }
+      }, 1000);
+    } else {
+      if (startTimeRef.current) {
+        startTimeRef.current = null;
+        pausedDurationRef.current = currentActivity?.durationSeconds || 0;
+      }
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [currentActivity?.status, updateCurrentActivityMetrics]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;

@@ -1,11 +1,13 @@
 'use client';
+import { Page, PageContent, List, ListItem, SwipeoutActions, SwipeoutButton, f7 } from 'framework7-react';
 import { useAppStore } from '@/lib/store';
 import { Utensils, Droplet, Flame, Trash2, Clock, Sparkles, Settings } from 'lucide-react';
-import { format, differenceInMinutes } from 'date-fns';
+import { format, differenceInMinutes, getHours } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useState, useEffect } from 'react';
 import NutritionSettings from '@/components/profile/NutritionSettings';
 import { cn } from '@/lib/utils';
+import { notifyFastingComplete } from '@/lib/notifications/inapp';
 
 export default function DiaryPage() {
   const { meals, water, deleteMeal, deleteWater, profile, currentFast, startFast, endFast } = useAppStore();
@@ -39,12 +41,38 @@ export default function DiaryPage() {
       const hours = Math.floor(elapsedMins / 60);
       const mins = elapsedMins % 60;
       setFastingElapsedStr(`${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`);
+
+      if (elapsedMins >= targetMins && currentFast.status === 'active') {
+        notifyFastingComplete(currentFast.targetHours);
+        endFast('completed');
+      }
     };
     
     updateFasting();
     const interval = setInterval(updateFasting, 60000); // update every minute
     return () => clearInterval(interval);
-  }, [currentFast]);
+  }, [currentFast, endFast]);
+
+  useEffect(() => {
+    // Water reminder every 2 hours
+    const interval = setInterval(() => {
+      const currentHour = getHours(new Date());
+      if (currentHour >= 8 && currentHour <= 22) {
+        if (totalWater < profile.dailyGoals.waterMl * 0.8) {
+          if (f7) {
+            f7.notification.create({
+              icon: '<i class="f7-icons text-blue-500">drop_fill</i>',
+              title: 'Recordatorio de agua',
+              subtitle: '¡Hora de hidratarse!',
+              text: `Llevas ${totalWater}ml de ${profile.dailyGoals.waterMl}ml. ¡Toma un vaso más!`,
+              closeTimeout: 5000,
+            }).open();
+          }
+        }
+      }
+    }, 2 * 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [totalWater, profile.dailyGoals.waterMl]);
 
   const handleToggleFast = () => {
     if (currentFast) {
@@ -60,7 +88,14 @@ export default function DiaryPage() {
   };
 
   return (
-    <div className="p-6 bg-[#f8f9fa] min-h-full pb-32">
+    <Page className="bg-[#f8f9fa]">
+      <PageContent
+        className="p-6 min-h-full pb-32"
+        ptr
+        onPtrRefresh={(done) => {
+          setTimeout(done, 1000); 
+        }}
+      >
       <div className="flex justify-between items-center mb-2 pt-4">
         <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Comidas</h1>
         <button 
@@ -175,35 +210,36 @@ export default function DiaryPage() {
       {sortedMeals.length === 0 ? (
         <p className="text-sm text-gray-400 text-center py-6 bg-white rounded-[32px] border border-dashed border-gray-200 mb-8">No has registrado comidas hoy.</p>
       ) : (
-        <div className="space-y-3 mb-8">
+        <List mediaList className="mb-8">
           {sortedMeals.map(meal => (
-            <div key={meal.id} className="bg-white rounded-[24px] p-4 border border-gray-100 shadow-sm flex items-center group relative">
-              <div className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center mr-4 relative overflow-hidden">
+            <ListItem
+              key={meal.id}
+              swipeout
+              onSwipeoutDeleted={() => deleteMeal(meal.id)}
+            >
+              <div slot="media" className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center relative overflow-hidden">
                 <img src={`https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&q=80`} alt="Food" className="object-cover w-full h-full" referrerPolicy="no-referrer" />
               </div>
-              <div className="flex-1 min-w-0 pr-10">
-                <h4 className="font-bold text-gray-900 text-base truncate">{meal.name}</h4>
-                <div className="flex flex-wrap items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">
-                  <span>{format(new Date(meal.loggedAt), 'HH:mm')}</span>
-                  <span>•</span>
-                  <span>{meal.isAiGenerated ? 'IA' : 'Manual'}</span>
-                  <span>•</span>
-                  <span className="text-gray-500">{meal.protein}g P</span>
-                </div>
+              <div slot="title" className="font-bold text-gray-900 text-base">{meal.name}</div>
+              <div slot="text" className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">
+                {format(new Date(meal.loggedAt), 'HH:mm')} • {meal.isAiGenerated ? 'IA' : 'Manual'} • {meal.protein}g P
               </div>
-              <div className="text-right">
+              <div slot="after" className="text-right">
                 <span className="block font-bold text-gray-900 text-lg leading-none">{meal.calories}</span>
                 <span className="text-[10px] text-gray-400 font-bold uppercase tracking-wider">kcal</span>
               </div>
-              <button 
-                onClick={() => deleteMeal(meal.id)}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-red-50 text-red-500 opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity absolute right-4"
-              >
-                <Trash2 size={16} />
-              </button>
-            </div>
+              <SwipeoutActions right>
+                <SwipeoutButton
+                  delete
+                  confirmText="¿Eliminar esta comida?"
+                  color="red"
+                >
+                  <i className="f7-icons text-white">trash.fill</i>
+                </SwipeoutButton>
+              </SwipeoutActions>
+            </ListItem>
           ))}
-        </div>
+        </List>
       )}
 
       {/* Water Section */}
@@ -237,9 +273,8 @@ export default function DiaryPage() {
                 )}
                 onClick={() => {
                   if (isDrunk) {
-                    // removing the last glass
-                    const recentWater = sortedWater[0];
-                    if (recentWater) deleteWater(recentWater.id);
+                    const waterToDelete = sortedWater[i];
+                    if (waterToDelete) deleteWater(waterToDelete.id);
                   } else {
                     useAppStore.getState().addWater();
                   }
@@ -259,24 +294,30 @@ export default function DiaryPage() {
         {sortedWater.length === 0 ? (
           <p className="text-xs text-gray-400 text-center font-medium">No has registrado agua hoy.</p>
         ) : (
-          <div className="space-y-2 mt-4 pt-4 border-t border-gray-50">
+          <List className="mt-4 border-t border-gray-50">
             {sortedWater.map(w => (
-              <div key={w.id} className="flex justify-between items-center group">
-                <div className="flex items-center gap-3">
-                  <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{format(new Date(w.loggedAt), 'HH:mm')}</div>
-                  <div className="font-bold text-sm text-gray-900">+{w.amountMl}ml</div>
+              <ListItem
+                key={w.id}
+                swipeout
+                onSwipeoutDeleted={() => deleteWater(w.id)}
+              >
+                <div slot="title" className="text-[10px] font-bold uppercase tracking-wider text-gray-400">
+                  {format(new Date(w.loggedAt), 'HH:mm')}
                 </div>
-                <button 
-                  onClick={() => deleteWater(w.id)}
-                  className="p-2 text-red-500 opacity-0 group-hover:opacity-100 active:opacity-100 transition-opacity"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
+                <div slot="after" className="font-bold text-sm text-gray-900">
+                  +{w.amountMl}ml
+                </div>
+                <SwipeoutActions right>
+                  <SwipeoutButton delete color="red">
+                    <i className="f7-icons text-white">trash.fill</i>
+                  </SwipeoutButton>
+                </SwipeoutActions>
+              </ListItem>
             ))}
-          </div>
+          </List>
         )}
       </div>
-    </div>
+      </PageContent>
+    </Page>
   );
 }

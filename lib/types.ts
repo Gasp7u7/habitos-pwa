@@ -131,6 +131,8 @@ export type UserProfile = {
   hasCompletedOnboarding: boolean;
   dietType?: string;
   fastingSchedule?: string;
+  groupCode?: string;
+  groupId?: string;
   dailyGoals: {
     waterMl: number;
     calories: number;

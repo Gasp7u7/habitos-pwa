@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
+import { Sheet, PageContent, Block } from 'framework7-react';
 import { X, Check } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
@@ -30,10 +30,8 @@ export default function NutritionSettings({ isOpen, onClose }: { isOpen: boolean
   const [weightKg, setWeightKg] = useState(profile.weightKg?.toString() || '');
   const [glassSizeMl, setGlassSizeMl] = useState(profile.glassSizeMl?.toString() || '250');
   
-  // Update local state when profile changes/modal opens
   useEffect(() => {
     if (isOpen) {
-      // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
       setDietType(profile.dietType || 'omnivore');
       setFastingSchedule(profile.fastingSchedule || 'none');
       setCalories(profile.dailyGoals.calories.toString());
@@ -43,11 +41,9 @@ export default function NutritionSettings({ isOpen, onClose }: { isOpen: boolean
     }
   }, [isOpen, profile]);
 
-  // Auto calculate water when weight changes
   useEffect(() => {
     if (weightKg && parseInt(weightKg) > 0) {
-      const calculatedWaterMl = parseInt(weightKg) * 35; // 35 ml per kg
-      // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+      const calculatedWaterMl = parseInt(weightKg) * 35;
       setWater(calculatedWaterMl.toString());
     }
   }, [weightKg]);
@@ -68,21 +64,20 @@ export default function NutritionSettings({ isOpen, onClose }: { isOpen: boolean
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <motion.div
-          initial={{ y: '100%' }}
-          animate={{ y: 0 }}
-          exit={{ y: '100%' }}
-          transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="fixed inset-0 bg-white z-[60] flex flex-col font-sans"
-        >
-          <div className="flex items-center justify-between p-6 border-b border-gray-100 bg-white sticky top-0 shadow-sm">
+    <Sheet
+      opened={isOpen}
+      onSheetClosed={onClose}
+      swipeToClose
+      backdrop
+      style={{ height: '80vh', borderRadius: '32px 32px 0 0' }}
+    >
+      <PageContent>
+        <Block className="mt-0 pt-6">
+          <div className="flex items-center justify-between pb-6 border-b border-gray-100 bg-white sticky top-0 z-10">
             <h2 className="text-xl font-bold text-gray-900">Plan Nutricional</h2>
-            <button onClick={onClose} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-600 active:scale-95 transition-transform"><X size={20}/></button>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-6 pb-4">
+          <div className="py-6">
             <h3 className="font-bold text-gray-900 mb-3 px-1">Tipo de Dieta</h3>
             <div className="space-y-3 mb-8">
               {DIETS.map(diet => (
@@ -180,18 +175,16 @@ export default function NutritionSettings({ isOpen, onClose }: { isOpen: boolean
                 <p className="text-[10px] text-gray-400 font-medium px-2 mt-2">Calculado: 35ml x kg</p>
               </div>
             </div>
-          </div>
-
-          <div className="p-6 bg-white border-t border-gray-100 pb-safe relative z-10 shadow-[0_-10px_20px_rgba(0,0,0,0.05)]">
+            
             <button 
               onClick={handleSave}
-              className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold text-lg active:scale-95 transition-transform shadow-md"
+              className="w-full py-4 bg-gray-900 text-white rounded-2xl font-bold text-lg active:scale-95 transition-transform"
             >
               Guardar Cambios
             </button>
           </div>
-        </motion.div>
-      )}
-    </AnimatePresence>
+        </Block>
+      </PageContent>
+    </Sheet>
   );
 }

@@ -1,29 +1,54 @@
 'use client';
+import { cn } from '@/lib/utils';
 import { useAppStore } from '@/lib/store';
-import { Activity, Droplet, Flame, ArrowRight, Utensils, HeartPulse, Sparkles, Clock } from 'lucide-react';
+import { Activity, ArrowRight, Clock } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { format, differenceInMinutes } from 'date-fns';
+import { format, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useState, useEffect } from 'react';
+import { Swiper, SwiperSlide } from 'framework7-react';
 
 export default function HomePage() {
   const { profile, activities, meals, water, currentFast } = useAppStore();
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
   
-  const todayActivities = activities.filter(a => a.startedAt.startsWith(new Date().toISOString().split('T')[0]));
-  const todayMeals = meals.filter(m => m.loggedAt.startsWith(new Date().toISOString().split('T')[0]));
-  const todayWater = water.filter(w => w.loggedAt.startsWith(new Date().toISOString().split('T')[0]));
-  
-  const waterTotal = todayWater.reduce((sum, w) => sum + w.amountMl, 0);
-  const caloriesEaten = todayMeals.reduce((sum, m) => sum + m.calories, 0);
-  const totalProtein = todayMeals.reduce((sum, m) => sum + m.protein, 0);
+  const selectedDateStr = selectedDate.toISOString().split('T')[0];
+  const todayStr = new Date().toISOString().split('T')[0];
 
-  // Generate quick days array for the swiper
-  const days = Array.from({ length: 7 }, (_, i) => {
+  const todayActivities = activities.filter(a => a.startedAt.startsWith(todayStr));
+  const todayMeals = meals.filter(m => m.loggedAt.startsWith(todayStr));
+  const todayWater = water.filter(w => w.loggedAt.startsWith(todayStr));
+  
+  const waterTotalMl = todayWater.reduce((sum, w) => sum + w.amountMl, 0);
+  const caloriesEaten = todayMeals.reduce((sum, m) => sum + m.calories, 0);
+
+  const waterGoalMl = Math.round((profile.weightKg || 70) * 35);
+  const waterPct = Math.min(100, (waterTotalMl / waterGoalMl) * 100);
+  const calPct = Math.min(100, (caloriesEaten / profile.dailyGoals.calories) * 100);
+  const gymDone = todayActivities.length > 0;
+
+  const getHeroMessage = () => {
+    if (gymDone && waterPct >= 80 && calPct >= 70) return { text: "Día completo.", accent: "¡Excelente!" };
+    if (!gymDone && waterPct < 50) return { text: "Te falta", accent: "agua y ejercicio." };
+    if (!gymDone) return { text: "Sin actividad", accent: "hoy aún." };
+    if (waterPct < 50) return { text: "Vas bien,", accent: "toma más agua." };
+    return { text: "Vas", accent: "bien." };
+  };
+
+  const heroMsg = getHeroMessage();
+
+  const days = Array.from({ length: 14 }, (_, i) => {
     const d = new Date();
-    d.setDate(d.getDate() - (6 - i));
+    d.setDate(d.getDate() - (13 - i));
     return d;
   });
+
+  const hasActivityOnDay = (d: Date) => {
+    const dStr = d.toISOString().split('T')[0];
+    return activities.some(a => a.startedAt.startsWith(dStr)) || meals.some(m => m.loggedAt.startsWith(dStr)) || water.some(w => w.loggedAt.startsWith(dStr));
+  };
+
+  const isToday = (d: Date) => isSameDay(d, new Date());
 
   return (
     <div className="p-6 bg-[#f8f9fa] min-h-full pb-32">
@@ -33,156 +58,157 @@ export default function HomePage() {
             <Image src={`https://api.dicebear.com/7.x/notionists/svg?seed=${profile.name}`} alt="Avatar" width={48} height={48} />
           </div>
           <div>
-            <p className="text-gray-500 font-medium text-xs">¡Buen día!</p>
+            <p className="text-gray-500 font-medium text-xs">Buenos días,</p>
             <h1 className="text-lg font-bold text-gray-900 tracking-tight">{profile.name}</h1>
           </div>
         </div>
       </div>
 
-      {/* Hero Card like Image 1 */}
-      <div className="bg-[#D4F87A] rounded-[32px] p-6 mb-6 relative overflow-hidden">
-        <div className="flex justify-between items-center relative z-10">
-          <div>
-            <div className="flex items-center gap-1.5 text-[#1a2e00]/60 font-bold text-[10px] uppercase tracking-widest mb-2">
-              <Activity size={12} strokeWidth={3} /> INTAKE DIARIO
-            </div>
-            <h2 className="text-3xl font-bold text-[#1a2e00] leading-tight max-w-[150px] tracking-tight">
-              Progreso Semanal
-            </h2>
+      {/* Hero Card dark */}
+      <div className="bg-gray-900 rounded-[32px] p-6 mb-6 shadow-sm flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-white leading-tight mb-1">{heroMsg.text} <br/><span className="text-[#D4F87A]">{heroMsg.accent}</span></h2>
+        </div>
+        <div className="relative w-[80px] h-[80px] flex-shrink-0">
+          <ProgressRing radius={40} stroke={6} progress={waterPct} size={80} color="#D4F87A" />
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <ProgressRing radius={32} stroke={6} progress={calPct} size={80} color="#FFA07A" />
           </div>
-          <div className="w-20 h-20 rounded-full border border-white/20 flex items-center justify-center relative bg-white/40 backdrop-blur-md">
-             {/* Simple circular visual */}
-             <div className="text-center">
-               <span className="block text-2xl font-bold text-[#1a2e00] tabular-nums mt-1 leading-none">4</span>
-               <span className="text-[10px] uppercase font-bold text-[#1a2e00]/60 tracking-widest mt-0.5 block">DÍAS</span>
-             </div>
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+            <ProgressRing radius={24} stroke={6} progress={gymDone ? 100 : 0} size={80} color="#A78BFA" />
           </div>
         </div>
       </div>
 
-      {/* Stats Grid */}
+      {/* Bento 2x2 */}
       <div className="grid grid-cols-2 gap-3 mb-8">
+        <div className="bg-[#D4F87A] rounded-[24px] p-5 shadow-none flex flex-col justify-between">
+          <div className="text-[10px] uppercase tracking-widest font-bold text-[#1a2e00]/60 mb-2">CALORÍAS</div>
+          <span className="text-3xl font-bold text-[#1a2e00] leading-none mb-1">{caloriesEaten}</span>
+          <span className="text-xs font-semibold text-[#1a2e00]/60">/ {profile.dailyGoals.calories} kcal</span>
+        </div>
+        
         <div className="bg-white rounded-[24px] p-5 shadow-none border border-gray-100 flex flex-col justify-between">
-          <div className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-4">PROTEÍNA</div>
-          <div className="flex justify-between items-end">
-            <div>
-              <span className="text-3xl font-bold text-gray-900 leading-none tabular-nums mt-1 block">{totalProtein}</span>
-            </div>
-            <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center">
-              <Flame size={16} className="text-orange-500" />
-            </div>
-          </div>
-          <div className="text-xs font-medium text-gray-400 mt-2">Gramos</div>
+          <div className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">AGUA</div>
+          <span className="text-3xl font-bold text-gray-900 leading-none mb-1">{(waterTotalMl/1000).toFixed(1)}</span>
+          <span className="text-xs font-semibold text-gray-400">/ {(waterGoalMl/1000).toFixed(1)} L</span>
+        </div>
+        
+        <div className="bg-gray-900 rounded-[24px] p-5 shadow-none flex flex-col justify-between">
+          <div className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">AYUNO</div>
+          <span className="text-3xl font-bold text-white leading-none mb-1">{currentFast?.targetHours || 0}h</span>
+          <span className="text-xs font-semibold text-gray-400">{currentFast ? 'Activo' : 'Inactivo'}</span>
         </div>
 
         <div className="bg-white rounded-[24px] p-5 shadow-none border border-gray-100 flex flex-col justify-between">
-          <div className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-4">HIDRATACIÓN</div>
-          <div className="flex justify-between items-end">
-            <div>
-              <span className="text-3xl font-bold text-gray-900 leading-none tabular-nums mt-1 block">{(waterTotal / 1000).toFixed(1)}</span>
-            </div>
-            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">
-              <Droplet size={16} className="text-blue-500" />
-            </div>
-          </div>
-          <div className="text-xs font-medium text-gray-400 mt-2">Litros</div>
+          <div className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">PESO</div>
+          <span className="text-3xl font-bold text-gray-900 leading-none mb-1">{profile.weightKg || '--'}</span>
+          <span className="text-xs font-semibold text-gray-400">kg</span>
         </div>
       </div>
 
-      {/* Calendar Swiper Header */}
-      <div className="flex justify-between items-end mb-4 px-1">
-        <h2 className="text-lg font-bold text-gray-900">{format(new Date(), "MMMM yyyy", { locale: es })}</h2>
-        <div className="flex items-center gap-2">
-           <button className="w-8 h-8 bg-white border border-gray-100 rounded-full flex items-center justify-center"><ArrowRight size={14} className="rotate-180 text-gray-400"/></button>
-           <button className="w-8 h-8 bg-white border border-gray-100 rounded-full flex items-center justify-center"><ArrowRight size={14} className="text-gray-900"/></button>
-        </div>
-      </div>
-
-      {/* Days Swiper */}
-      <div className="flex gap-2 justify-between mb-8 px-1">
-        {days.map((d, i) => {
-          const isToday = i === 6;
-          return (
-            <div key={i} className={`flex-col items-center justify-center flex transition-transform ${isToday ? 'scale-110' : ''}`}>
-              <span className="text-xs font-semibold text-gray-400 mb-3">{format(d, 'eeeee', { locale: es }).substring(0, 1)}</span>
-              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm ${isToday ? 'bg-[#D4F87A] text-gray-900 shadow-sm' : 'text-gray-900'}`}>
-                {format(d, 'dd')}
+      {/* Swiper 7 days */}
+      <Swiper slidesPerView={7} centeredSlides={false} className="mb-8" initialSlide={7}>
+        {days.map((d, i) => (
+          <SwiperSlide key={i} onClick={() => setSelectedDate(d)}>
+            <div className={`flex flex-col items-center gap-2 py-2 transition-opacity ${isToday(d) ? 'opacity-100' : 'opacity-50'}`}>
+              <span className={`text-[10px] font-bold uppercase tracking-widest ${isToday(d) ? 'text-gray-900' : 'text-gray-400'}`}>
+                {format(d, 'eeeee', { locale: es }).substring(0, 1)}
+              </span>
+              <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm ${isToday(d) ? 'bg-[#D4F87A] text-[#1a2e00] shadow-sm' : 'text-gray-900'}`}>
+                {format(d, 'd')}
               </div>
+              <div className={cn("w-1.5 h-1.5 rounded-full", hasActivityOnDay(d) ? "bg-gray-400" : "bg-transparent")} />
             </div>
-          );
-        })}
-      </div>
+          </SwiperSlide>
+        ))}
+      </Swiper>
 
-      {/* Fasting Quick Status (Optional but good) */}
-      {currentFast && (
-        <div className="bg-gray-900 rounded-[32px] p-5 shadow-sm mb-8 flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-gray-800 flex items-center justify-center">
-                <Clock size={20} className="text-[#D4F87A]" />
+      {/* Mini feed del grupo */}
+      {profile.groupCode && (
+        <div className="mb-8">
+          <div className="flex justify-between items-center mb-4 px-1">
+            <h2 className="text-lg font-bold text-gray-900">Tu Grupo ({profile.groupCode})</h2>
+            <Link href="/profile" className="text-xs font-bold text-gray-400 uppercase tracking-widest">Invitar</Link>
+          </div>
+          <div className="space-y-3">
+            <div className="bg-white rounded-[24px] p-4 border border-gray-100 shadow-sm flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0 relative">
+                <Image src={`https://api.dicebear.com/7.x/notionists/svg?seed=Carlos`} alt="Friend" fill referrerPolicy="no-referrer" />
               </div>
               <div>
-                <h4 className="text-gray-400 text-xs font-bold uppercase tracking-widest mb-1">Ayuno Activo</h4>
-                <div className="text-white font-bold text-xl leading-none">{currentFast.targetHours}h {profile.fastingSchedule}</div>
+                <p className="text-sm font-bold text-gray-900">Carlos <span className="font-medium text-gray-500">completó una caminata de 2.5km</span></p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Hace 2 horas</p>
               </div>
             </div>
-            <Link href="/diary" className="bg-[#D4F87A] text-gray-900 text-xs font-bold px-4 py-2.5 rounded-full active:scale-95 transition-transform">Revisar</Link>
+             
+            <div className="bg-white rounded-[24px] p-4 border border-gray-100 shadow-sm flex items-center gap-4">
+              <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0 relative">
+                <Image src={`https://api.dicebear.com/7.x/notionists/svg?seed=Ana`} alt="Ana" fill referrerPolicy="no-referrer" />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-gray-900">Ana <span className="font-medium text-gray-500">completó un ayuno de 16h</span></p>
+                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Hace 5 horas</p>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 
-      {/* Recent Activities */}
-      <div className="flex justify-between items-center mb-4 mt-8 px-1">
-        <h2 className="text-lg font-bold text-gray-900">Actividades Recientes</h2>
-        <Link href="/progress" className="text-xs font-bold text-gray-400 uppercase tracking-widest">Ver Todo</Link>
+      {/* Esta semana */}
+      <div className="flex justify-between items-center mb-4 px-1">
+        <h2 className="text-lg font-bold text-gray-900">Esta semana</h2>
+        <Link href="/workout" className="text-xs font-bold text-gray-400 uppercase tracking-widest">Entrenamientos</Link>
       </div>
       
       <div className="space-y-3 mb-8">
         {activities.slice().reverse().slice(0, 3).map(a => (
           <div key={a.id} className="bg-white rounded-[24px] p-4 border border-gray-100 shadow-sm flex items-center justify-between">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-purple-50 flex items-center justify-center">
-                <Activity size={20} className="text-purple-600" />
+              <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center">
+                <i className={cn("f7-icons text-xl", a.type === 'walk' ? 'text-blue-500' : a.type === 'run' ? 'text-orange-500' : 'text-purple-500')}>
+                  {a.type === 'walk' ? 'figure.walk' : a.type === 'run' ? 'figure.run' : 'dumbbell.fill'}
+                </i>
               </div>
               <div>
-                <h4 className="font-bold text-gray-900 text-base">{a.type === 'walk' ? 'Caminata' : 'Running'}</h4>
+                <h4 className="font-bold text-gray-900 text-base">{a.type === 'walk' ? 'Caminata' : a.type === 'run' ? 'Running' : 'Gym'}</h4>
                 <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">
                   {format(new Date(a.startedAt), "d MMM 'a las' HH:mm", { locale: es })}
                 </div>
               </div>
             </div>
             <div className="text-right">
-              <div className="font-bold text-lg text-gray-900 leading-none">{(a.distanceMeters / 1000).toFixed(2)}</div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">KM</div>
+              {a.type !== 'gym' ? (
+                <>
+                  <div className="font-bold text-lg text-gray-900 leading-none">{(a.distanceMeters / 1000).toFixed(2)}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">KM</div>
+                </>
+              ) : (
+                <>
+                  <div className="font-bold text-lg text-gray-900 leading-none">{Math.floor(a.durationSeconds / 60)}</div>
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">MIN</div>
+                </>
+              )}
             </div>
           </div>
         ))}
         {activities.length === 0 && (
-          <p className="text-sm text-gray-400 text-center py-6">No hay actividades recientes.</p>
-        )}
-      </div>
-
-      {/* Meals - Diet Focus */}
-      <h2 className="text-lg font-bold text-gray-900 mb-4 px-1">Diario de Comidas</h2>
-      
-      <div className="space-y-4 mb-4">
-        {todayMeals.slice(0, 3).map(m => (
-          <div key={m.id} className="relative flex items-center justify-between px-1">
-            <div className="flex flex-col">
-              <span className="font-bold text-gray-900 text-base">{m.name}</span>
-              <div className="flex items-center gap-1.5 mt-0.5">
-                <Flame size={12} className="text-orange-500" />
-                <span className="text-sm font-semibold text-gray-500">{m.calories} kcal</span>
-              </div>
-            </div>
-            <div className="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center relative shadow-sm border border-gray-200 overflow-hidden">
-               {/* Cute placeholder for food */}
-               <Image src={`https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&q=80`} alt="Food" fill className="object-cover" referrerPolicy="no-referrer" />
-            </div>
-          </div>
-        ))}
-        {todayMeals.length === 0 && (
-          <p className="text-sm text-gray-400 text-center py-6">No has registrado comidas todavía.</p>
+          <p className="text-sm text-gray-400 text-center py-6 bg-white border border-gray-100 rounded-[24px]">No hay actividades recientes.</p>
         )}
       </div>
     </div>
+  );
+}
+
+function ProgressRing({ radius, stroke, progress, size, color }: any) {
+  const normalizedRadius = radius - stroke * 2;
+  const circumference = normalizedRadius * 2 * Math.PI;
+  const strokeDashoffset = circumference - (progress / 100) * circumference;
+
+  return (
+    <svg height={size} width={size} className="rotate-[-90deg]">
+      <circle stroke="rgba(255,255,255,0.1)" fill="transparent" strokeWidth={stroke} r={normalizedRadius} cx={size / 2} cy={size / 2} />
+      <circle stroke={color} fill="transparent" strokeWidth={stroke} strokeDasharray={circumference + ' ' + circumference} style={{ strokeDashoffset }} strokeLinecap="round" r={normalizedRadius} cx={size / 2} cy={size / 2} />
+    </svg>
   );
 }

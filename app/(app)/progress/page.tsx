@@ -1,10 +1,12 @@
 'use client';
-import { BarChart3, Activity, Droplet, Flame, Trophy, Scale } from 'lucide-react';
+import { Scale } from 'lucide-react';
+import { calculateStreak, isThisWeek, isLastWeek, average } from '@/lib/metrics/streak';
 import { useAppStore } from '@/lib/store';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
 
 interface WeightLog {
   id: string;
@@ -15,6 +17,7 @@ interface WeightLog {
 export default function ProgressPage() {
   const { activities, water, meals, profile } = useAppStore();
   const [weightHistory, setWeightHistory] = useState<WeightLog[]>([]);
+  const [activeTab, setActiveTab] = useState<'peso'|'resumen'>('peso');
 
   useEffect(() => {
     const load = async () => {
@@ -40,132 +43,202 @@ export default function ProgressPage() {
   const hours = Math.floor(totalActivityMin / 60);
   const mins = totalActivityMin % 60;
 
-  // Process weight data for chart
   const hasWeightInfo = weightHistory.length > 0;
   const lastWeight = hasWeightInfo ? weightHistory[weightHistory.length - 1].weight_kg : (profile.weightKg || 0);
-  const minWeight = hasWeightInfo ? Math.min(...weightHistory.map(w => w.weight_kg)) : 0;
-  const maxWeight = hasWeightInfo ? Math.max(...weightHistory.map(w => w.weight_kg)) : 0;
   
-  // Calculate heights (simple normalization between 20% and 100% of container)
-  const range = maxWeight - minWeight || 1; 
+  const chartData = weightHistory.map(w => ({
+    date: format(new Date(w.logged_at), 'd MMM', { locale: es }),
+    peso: w.weight_kg
+  }));
 
   return (
     <div className="p-6 bg-[#f8f9fa] min-h-full pb-32">
       <h1 className="text-2xl font-bold text-gray-900 mb-6 pt-4 tracking-tight">Estadísticas</h1>
       
-      <h2 className="text-lg font-bold text-gray-900 mb-4 px-1">Peso</h2>
-      <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 mb-8">
-        <div className="flex justify-between items-end mb-8">
-          <div>
-            <h3 className="text-[40px] leading-none font-bold text-gray-900 flex items-baseline gap-1">{lastWeight} <span className="text-sm font-semibold text-gray-400 tracking-wider">Kg</span></h3>
-          </div>
-          <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center">
-            <Scale size={18} className="text-indigo-600" />
-          </div>
-        </div>
-        
-        {hasWeightInfo ? (
-          <>
-            <div className="flex items-end justify-between h-40 mb-4 pb-2 border-b border-gray-100 w-full overflow-x-auto hide-scrollbar snap-x">
-              {weightHistory.slice(-10).map((log, i) => {
-                const percentage = minWeight === maxWeight ? 50 : 20 + ((log.weight_kg - minWeight) / range) * 80;
-                return (
-                  <div key={log.id} className="w-10 flex-shrink-0 flex flex-col justify-end items-center mx-1 group relative snap-center h-full">
-                    <span className="absolute -top-6 text-[10px] text-gray-900 font-bold w-full text-center opacity-0 group-hover:opacity-100 transition-opacity">
-                      {log.weight_kg}
-                    </span>
-                    <div 
-                      className="w-full bg-[#D4F87A] rounded-t-xl transition-all" 
-                      style={{ height: `${percentage}%` }}
+      {/* Custom Tabs */}
+      <div className="flex bg-gray-100 p-1 rounded-full mb-6 relative">
+        <button 
+          onClick={() => setActiveTab('peso')}
+          className={`flex-1 flex justify-center py-2 text-xs font-bold rounded-full transition-all ${activeTab === 'peso' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}
+        >
+          Peso
+        </button>
+        <button 
+          onClick={() => setActiveTab('resumen')}
+          className={`flex-1 flex justify-center py-2 text-xs font-bold rounded-full transition-all ${activeTab === 'resumen' ? 'bg-white shadow-sm text-gray-900' : 'text-gray-500'}`}
+        >
+          Resumen
+        </button>
+      </div>
+      
+      {activeTab === 'peso' ? (
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 mb-8">
+            <div className="flex justify-between items-end mb-8">
+              <div>
+                <h3 className="text-[40px] leading-none font-bold text-gray-900 flex items-baseline gap-1">{lastWeight} <span className="text-sm font-semibold text-gray-400 tracking-wider">Kg</span></h3>
+              </div>
+              <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center">
+                <Scale size={18} className="text-indigo-600" />
+              </div>
+            </div>
+            
+            {hasWeightInfo ? (
+              <div className="h-48 w-full -ml-4">
+                <ResponsiveContainer width="100%" height="100%">
+                  <LineChart data={chartData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E5E7EB" />
+                    <XAxis 
+                      dataKey="date" 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 10, fill: '#9CA3AF', fontWeight: 'bold' }} 
+                      dy={10}
                     />
-                  </div>
-                );
-              })}
-            </div>
-            <div className="flex justify-between text-[10px] font-bold text-gray-400 uppercase tracking-wider px-1">
-               {weightHistory.slice(-10).map((log, i) => (
-                  <span key={i}>{format(new Date(log.logged_at), 'd MMM', { locale: es })}</span>
-               ))}
-            </div>
-          </>
-        ) : (
-          <div className="h-40 flex items-center justify-center border-t border-gray-100">
-             <span className="text-sm text-gray-400 font-medium">Registra tu peso para ver la gráfica</span>
+                    <YAxis 
+                      domain={['dataMin - 1', 'dataMax + 1']} 
+                      axisLine={false} 
+                      tickLine={false} 
+                      tick={{ fontSize: 10, fill: '#9CA3AF', fontWeight: 'bold' }} 
+                      dx={-10}
+                    />
+                    <Tooltip 
+                      contentStyle={{ borderRadius: '16px', border: 'none', boxShadow: '0 4px 12px rgba(0,0,0,0.1)', fontWeight: 'bold' }}
+                      itemStyle={{ color: '#4F46E5', fontWeight: 'bold' }}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="peso" 
+                      stroke="#4F46E5" 
+                      strokeWidth={4} 
+                      dot={{ fill: '#4F46E5', strokeWidth: 2, r: 4 }} 
+                      activeDot={{ r: 6, fill: '#D4F87A', stroke: '#4F46E5' }} 
+                    />
+                  </LineChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <div className="h-40 flex items-center justify-center border-t border-gray-100">
+                 <span className="text-sm text-gray-400 font-medium">Registra tu peso para ver la gráfica</span>
+              </div>
+            )}
           </div>
-        )}
-      </div>
-      
-      <div className="grid grid-cols-2 gap-3 mb-8">
-        <div className="bg-white p-5 rounded-[24px] border border-gray-100 flex flex-col justify-between h-32">
-          <div className="flex items-start gap-2">
-            <div>
-              <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">DISTANCIA</span>
-            </div>
+
+          <h2 className="text-lg font-bold text-gray-900 mb-4 px-1">Logros e Insights</h2>
+          
+          <div className="bg-gray-900 rounded-[24px] p-5 mb-3 shadow-[0_8px_24px_rgba(0,0,0,0.1)]">
+            <p className="text-[10px] font-bold tracking-widest uppercase text-gray-400">
+              RACHA DE ACTIVIDAD
+            </p>
+            <p className="text-3xl font-bold tracking-tight text-[#D4F87A] mt-1">
+              {calculateStreak(activities)} días 🔥
+            </p>
           </div>
-          <div>
-            <span className="text-3xl font-bold text-gray-900 tabular-nums">{totalDistance.toFixed(1)}<span className="text-sm text-gray-400 font-medium ml-1">km</span></span>
+    
+          <div className="bg-white rounded-[24px] p-5 border border-gray-100">
+            <p className="text-[10px] font-bold tracking-widest uppercase text-gray-400 mb-2">
+              INSIGHT DE RITMO
+            </p>
+            <p className="text-sm text-gray-600 leading-relaxed font-medium">
+              {(() => {
+                const thisWeekActivities = activities.filter(a => isThisWeek(new Date(a.startedAt)));
+                const lastWeekActivities = activities.filter(a => isLastWeek(new Date(a.startedAt)));
+                
+                const avgPaceThisWeek = average(thisWeekActivities.map(a => a.avgPaceSecondsPerKm).filter(Boolean));
+                const avgPaceLastWeek = average(lastWeekActivities.map(a => a.avgPaceSecondsPerKm).filter(Boolean));
+                
+                const paceImprovement = avgPaceLastWeek > 0 
+                  ? Math.round(((avgPaceLastWeek - avgPaceThisWeek) / avgPaceLastWeek) * 100) 
+                  : null;
+                  
+                if (paceImprovement === null) return <span>Aún no hay suficientes datos para calcular tu mejora esta semana. ¡Sigue moviéndote!</span>;
+                
+                if (paceImprovement > 0) {
+                  return <>Esta semana tu ritmo constante mejoró un <strong className="text-gray-900">{paceImprovement}%</strong>.</>;
+                } else if (paceImprovement < 0) {
+                  return <>Tu ritmo fue un <strong className="text-gray-900">{Math.abs(paceImprovement)}%</strong> más lento esta semana. ¡Tómalo con calma!</>;
+                } else {
+                  return <>Mantuviste tu ritmo exactamente igual que la semana pasada. ¡Qué consistencia!</>;
+                }
+              })()}
+            </p>
           </div>
         </div>
-
-        <div className="bg-white p-5 rounded-[24px] border border-gray-100 flex flex-col justify-between h-32">
-          <div className="flex items-start gap-2">
-            <div>
-              <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">HIDRATACIÓN</span>
+      ) : (
+        <div className="animate-in fade-in slide-in-from-bottom-2 duration-300">
+          <div className="grid grid-cols-2 gap-3 mb-8">
+            <div className="bg-white p-5 rounded-[24px] border border-gray-100 flex flex-col justify-between h-32">
+              <div className="flex items-start gap-2">
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">DISTANCIA</span>
+                </div>
+              </div>
+              <div>
+                <span className="text-3xl font-bold text-gray-900 tabular-nums">{totalDistance.toFixed(1)}<span className="text-sm text-gray-400 font-medium ml-1">km</span></span>
+              </div>
+            </div>
+    
+            <div className="bg-white p-5 rounded-[24px] border border-gray-100 flex flex-col justify-between h-32">
+              <div className="flex items-start gap-2">
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">HIDRATACIÓN</span>
+                </div>
+              </div>
+              <div>
+                <span className="text-3xl font-bold text-gray-900 tabular-nums">{totalWaterLiters.toFixed(1)}<span className="text-sm text-gray-400 font-medium ml-1">L</span></span>
+              </div>
+            </div>
+    
+            <div className="bg-[#D4F87A] p-5 rounded-[24px] flex flex-col justify-between h-32">
+              <div className="flex items-start gap-2">
+                <div>
+                  <span className="block text-[10px] font-bold text-[#1a2e00]/60 uppercase tracking-widest">CALORÍAS</span>
+                </div>
+              </div>
+              <div>
+                <span className="text-3xl font-bold text-[#1a2e00] tabular-nums">
+                  {totalCalories > 1000 ? (totalCalories / 1000).toFixed(1) : totalCalories}
+                  {totalCalories > 1000 && <span className="text-sm text-[#1a2e00]/60 font-medium mx-0.5">K</span>}
+                  <span className="text-sm text-[#1a2e00]/60 font-medium">kcal</span>
+                </span>
+              </div>
+            </div>
+    
+            <div className="bg-white p-5 rounded-[24px] border border-gray-100 flex flex-col justify-between h-32">
+              <div className="flex items-start gap-2">
+                <div>
+                  <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">ACTIVIDAD</span>
+                </div>
+              </div>
+              <div>
+                <span className="text-3xl font-bold text-gray-900 tabular-nums">{hours > 0 ? `${hours}h ` : ''}{mins}m</span>
+              </div>
             </div>
           </div>
-          <div>
-            <span className="text-3xl font-bold text-gray-900 tabular-nums">{totalWaterLiters.toFixed(1)}<span className="text-sm text-gray-400 font-medium ml-1">L</span></span>
-          </div>
-        </div>
 
-        <div className="bg-white p-5 rounded-[24px] border border-gray-100 flex flex-col justify-between h-32">
-          <div className="flex items-start gap-2">
-            <div>
-              <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">CALORÍAS</span>
+          <h2 className="text-lg font-bold text-gray-900 mb-4 px-1">Totales Históricos</h2>
+          <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100">
+            <div className="space-y-4">
+              <div className="flex justify-between items-center border-b border-gray-50 pb-4">
+                <span className="text-sm font-semibold text-gray-500">Actividades completadas</span>
+                <span className="text-lg font-bold text-gray-900">{activities.length}</span>
+              </div>
+              <div className="flex justify-between items-center border-b border-gray-50 pb-4">
+                <span className="text-sm font-semibold text-gray-500">Distancia GPS</span>
+                <span className="text-lg font-bold text-gray-900">{activities.filter(a => ['walk', 'run', 'cycling'].includes(a.type)).reduce((sum, a) => sum + (a.distanceMeters || 0), 0) / 1000} <span className="text-xs text-gray-400">km</span></span>
+              </div>
+              <div className="flex justify-between items-center border-b border-gray-50 pb-4">
+                <span className="text-sm font-semibold text-gray-500">Días con comidas</span>
+                <span className="text-lg font-bold text-gray-900">{new Set(meals.map(m => format(new Date(m.loggedAt), 'yyyy-MM-dd'))).size}</span>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-semibold text-gray-500">Ayunos completados</span>
+                <span className="text-lg font-bold text-gray-900">{useAppStore.getState().fastingHistory?.length || 0}</span>
+              </div>
             </div>
           </div>
-          <div>
-            <span className="text-3xl font-bold text-gray-900 tabular-nums">
-              {totalCalories > 1000 ? (totalCalories / 1000).toFixed(1) : totalCalories}
-              {totalCalories > 1000 && <span className="text-sm text-gray-400 font-medium mx-0.5">K</span>}
-              <span className="text-sm text-gray-400 font-medium">kcal</span>
-            </span>
-          </div>
         </div>
-
-        <div className="bg-white p-5 rounded-[24px] border border-gray-100 flex flex-col justify-between h-32">
-          <div className="flex items-start gap-2">
-            <div>
-              <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest">ACTIVIDAD</span>
-            </div>
-          </div>
-          <div>
-            <span className="text-3xl font-bold text-gray-900 tabular-nums">{hours > 0 ? `${hours}h ` : ''}{mins}m</span>
-          </div>
-        </div>
-      </div>
-
-      {/* Streaks & Insights */}
-      <h2 className="text-lg font-bold text-gray-900 mb-4 px-1">Logros e Insights</h2>
-      
-      <div className="bg-[#D4F87A] rounded-[24px] p-5 mb-3 shadow-[0_8px_24px_rgba(212,248,122,0.2)]">
-        <p className="text-[10px] font-bold tracking-widest uppercase text-[#1a2e00]/60">
-          RACHA
-        </p>
-        <p className="text-3xl font-bold tracking-tight text-[#1a2e00] mt-1">
-          5 días 🔥
-        </p>
-      </div>
-
-      <div className="bg-white rounded-[24px] p-5 border border-gray-100">
-        <p className="text-[10px] font-bold tracking-widest uppercase text-gray-400 mb-2">
-          INSIGHT DE RITMO
-        </p>
-        <p className="text-sm text-gray-600 leading-relaxed">
-          Esta semana tu ritmo constante mejoró un <strong>5%</strong>.
-        </p>
-      </div>
-
+      )}
     </div>
   );
 }

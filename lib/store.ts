@@ -3,6 +3,7 @@ import { persist } from 'zustand/middleware';
 import { ActivityEntry, MealEntry, WaterEntry, UserProfile, DeviceConnection, FastingEntry, Exercise, Routine } from './types';
 import { addDays, subDays } from 'date-fns';
 import { insertWaterLog, deleteWaterLog, insertMealLog, deleteMealLog, insertFastingLog, endFastingLog } from './supabase/logs';
+import { notifyWaterAdded, notifyMealAdded, notifyFastingComplete } from './notifications/inapp';
 
 type AppState = {
   profile: UserProfile;
@@ -172,6 +173,7 @@ export const useAppStore = create<AppState>()(
         const amountMl = amount || state.profile.glassSizeMl || 250;
         
         insertWaterLog(state.profile.id, amountMl).catch(console.error);
+        notifyWaterAdded(amountMl);
         
         set((s) => ({
           water: [...s.water, {
@@ -186,6 +188,7 @@ export const useAppStore = create<AppState>()(
       addMeal: (meal) => {
         const state = get();
         insertMealLog(state.profile.id, meal).catch(console.error);
+        notifyMealAdded(meal.name);
         
         set((s) => ({
           meals: [...s.meals, {

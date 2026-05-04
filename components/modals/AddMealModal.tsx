@@ -1,8 +1,8 @@
 'use client';
 import { useState } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { X, Save, Utensils } from 'lucide-react';
+import { Utensils } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
+import { Sheet, PageContent, Block } from 'framework7-react';
 
 interface AddMealModalProps {
   isOpen: boolean;
@@ -40,36 +40,22 @@ export default function AddMealModal({ isOpen, onClose }: AddMealModalProps) {
   };
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <>
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-black/40 z-[60]"
-          />
-          <motion.div
-            initial={{ y: '100%' }}
-            animate={{ y: 0 }}
-            exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="absolute bottom-0 left-0 right-0 bg-white rounded-t-[32px] z-[70] p-6 pb-auto max-h-[90vh] overflow-y-auto shadow-2xl"
-          >
-            <div className="flex justify-between items-center mb-6">
+    <Sheet
+      opened={isOpen}
+      onSheetClosed={onClose}
+      swipeToClose
+      backdrop
+      style={{ height: 'auto', borderRadius: '32px 32px 0 0' }}
+    >
+      <PageContent>
+        <Block>
+            <div className="flex justify-between items-center mb-6 pt-2">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center">
                   <Utensils size={20} className="text-green-600" />
                 </div>
                 <h2 className="text-xl font-bold text-gray-900">Agregar Comida</h2>
               </div>
-              <button 
-                onClick={onClose}
-                className="w-8 h-8 flex items-center justify-center rounded-full bg-gray-100 text-gray-500 active:scale-95 transition-transform"
-              >
-                <X size={18} />
-              </button>
             </div>
 
             <div className="space-y-4 mb-6">
@@ -132,14 +118,12 @@ export default function AddMealModal({ isOpen, onClose }: AddMealModalProps) {
             <button 
               onClick={handleSave}
               disabled={!name || !calories}
-              className="w-full bg-gray-900 text-white rounded-[24px] py-4 font-bold text-lg disabled:bg-gray-200 disabled:text-gray-400 active:scale-95 transition-transform pb-safe-bottom"
-              style={{ marginBottom: 'env(safe-area-inset-bottom, 20px)' }}
+              className="w-full bg-gray-900 text-white rounded-[24px] py-4 font-bold text-lg disabled:bg-gray-200 disabled:text-gray-400 active:scale-95 transition-transform pb-safe-bottom mb-4"
             >
               Guardar Comida
             </button>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
+        </Block>
+      </PageContent>
+    </Sheet>
   );
 }

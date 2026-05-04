@@ -1,5 +1,7 @@
 import type {Metadata, Viewport} from 'next';
 import './globals.css';
+import 'framework7/css/bundle';
+import 'framework7-icons/css/framework7-icons.css';
 
 export const metadata: Metadata = {
   title: 'Hábitos PWA',

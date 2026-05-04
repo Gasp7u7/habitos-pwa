@@ -15,6 +15,12 @@ import { createClient } from '@/lib/supabase/client';
 import { getProfile } from '@/lib/supabase/profile';
 import { getTodayLogs, getRecentActivities } from '@/lib/supabase/logs';
 
+import { Framework7 } from 'framework7/lite';
+import Framework7React, { Sheet, PageContent, Block } from 'framework7-react';
+
+// eslint-disable-next-line react-hooks/rules-of-hooks
+Framework7.use(Framework7React);
+
 export default function MobileLayout({ children }: { children: ReactNode }) {
   const [isFabOpen, setIsFabOpen] = useState(false);
   const [isAddMealOpen, setIsAddMealOpen] = useState(false);
@@ -144,35 +150,23 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
           {children}
         </div>
 
-        {/* Global FAB Sheet Overlay */}
-        <AnimatePresence>
-          {isFabOpen && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setIsFabOpen(false)}
-              className="absolute inset-0 bg-black/40 z-40"
-            />
-          )}
-        </AnimatePresence>
-
         {/* FAB Sheet Modal */}
-        <AnimatePresence>
-          {isFabOpen && (
-            <motion.div
-              initial={{ y: '100%' }}
-              animate={{ y: 0 }}
-              exit={{ y: '100%' }}
-              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl z-50 p-6 pb-24 shadow-[0_-10px_40px_rgba(0,0,0,0.1)]"
-            >
+        <Sheet
+          opened={isFabOpen}
+          onSheetClosed={() => setIsFabOpen(false)}
+          openedChange={(opened) => setIsFabOpen(opened)}
+          style={{ height: 'auto', borderRadius: '24px 24px 0 0' }}
+          swipeToClose
+          backdrop
+        >
+          <PageContent>
+            <Block>
               <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
-              <h3 className="text-xl font-bold mb-6 text-gray-900">Acceso Rápido</h3>
-              <div className="grid grid-cols-4 gap-y-6 gap-x-2">
+              <h3 className="text-xl font-bold mb-6 text-gray-900">Registrar</h3>
+              <div className="grid grid-cols-2 gap-3 pb-8">
                 <FabAction 
-                  icon={<Droplet />} 
-                  label="Agua" 
+                  icon="drop.fill" 
+                  label="+ 1 vaso agua" 
                   color="bg-blue-50 text-blue-600" 
                   onClick={() => { 
                     useAppStore.getState().addWater(); 
@@ -180,8 +174,8 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
                   }} 
                 />
                 <FabAction 
-                  icon={<Flame />} 
-                  label="Descifra IA" 
+                  icon="sparkles" 
+                  label="Comida con IA" 
                   color="bg-orange-50 text-orange-600" 
                   onClick={() => { 
                     setIsFabOpen(false); 
@@ -189,17 +183,8 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
                   }} 
                 />
                 <FabAction 
-                  icon={<Utensils />} 
-                  label="Comida" 
-                  color="bg-green-50 text-green-600" 
-                  onClick={() => { 
-                    setIsFabOpen(false); 
-                    setIsAddMealOpen(true);
-                  }} 
-                />
-                <FabAction 
-                  icon={<Scale />} 
-                  label="Peso" 
+                  icon="scalemass.fill" 
+                  label="Registrar peso" 
                   color="bg-indigo-50 text-indigo-600" 
                   onClick={() => { 
                     setIsFabOpen(false); 
@@ -207,46 +192,18 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
                   }} 
                 />
                 <FabAction 
-                  icon={<Dumbbell />} 
-                  label="Gym Libre" 
-                  color="bg-slate-100 text-slate-700" 
+                  icon="pencil.and.list.clipboard" 
+                  label="Comida manual" 
+                  color="bg-green-50 text-green-600" 
                   onClick={() => { 
                     setIsFabOpen(false); 
-                    useAppStore.getState().setActiveRoutine(null);
-                    router.push('/activity?type=gym');
-                  }} 
-                />
-                <FabAction 
-                  icon={<AlignLeft />} 
-                  label="Rutinas" 
-                  color="bg-purple-50 text-purple-600" 
-                  onClick={() => { 
-                    setIsFabOpen(false); 
-                    router.push('/workouts');
-                  }} 
-                />
-                <FabAction 
-                  icon={<PersonStanding />} 
-                  label="Ejercicios" 
-                  color="bg-sky-50 text-sky-600" 
-                  onClick={() => { 
-                    setIsFabOpen(false); 
-                    router.push('/workouts');
-                  }} 
-                />
-                <FabAction 
-                  icon={<MapIcon />} 
-                  label="Actividad GPS" 
-                  color="bg-red-50 text-red-600" 
-                  onClick={() => { 
-                    setIsFabOpen(false); 
-                    router.push('/activity?type=walk');
+                    setIsAddMealOpen(true);
                   }} 
                 />
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+            </Block>
+          </PageContent>
+        </Sheet>
 
         <AddMealModal isOpen={isAddMealOpen} onClose={() => setIsAddMealOpen(false)} />
         <AiMealModal isOpen={isAiMealOpen} onClose={() => setIsAiMealOpen(false)} />
@@ -254,23 +211,23 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
 
         {/* Bottom Tab Bar */}
         <div className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 flex justify-around items-center z-40 pt-2 pb-[calc(10px+env(safe-area-inset-bottom))] min-h-[72px]">
-          <TabItem href="/" icon={<Home size={24} strokeWidth={2} />} label="Inicio" />
-          <TabItem href="/diary" icon={<Utensils size={24} strokeWidth={2} />} label="Comidas" />
+          <TabItem href="/" icon={<i className="f7-icons text-xl">house.fill</i>} label="Hoy" />
+          <TabItem href="/workout" icon={<i className="f7-icons text-xl">figure.run</i>} label="Entreno" />
           
-          <div className="relative">
+          <div className="relative flex justify-center w-16">
             <button
               onClick={() => setIsFabOpen(!isFabOpen)}
               className={cn(
-                "w-16 h-16 rounded-full bg-[#D4F87A] shadow-[0_8px_24px_rgba(212,248,122,0.45)] flex items-center justify-center -translate-y-5 active:scale-95 transition-transform flex-shrink-0",
+                "absolute -top-10 w-16 h-16 rounded-full bg-gray-900 shadow-lg flex items-center justify-center active:scale-95 transition-transform flex-shrink-0 z-50",
                 isFabOpen && "rotate-45"
               )}
             >
-              <Plus size={28} strokeWidth={2.5} className="text-[#1a2e00]" />
+              <Plus size={28} strokeWidth={2.5} className="text-white" />
             </button>
           </div>
 
-          <TabItem href="/workouts" icon={<BarChart3 size={24} strokeWidth={2} />} label="Ejercicio" />
-          <TabItem href="/profile" icon={<User size={24} strokeWidth={2} />} label="Perfil" />
+          <TabItem href="/diary" icon={<i className="f7-icons text-xl">fork.knife</i>} label="Comer" />
+          <TabItem href="/profile" icon={<i className="f7-icons text-xl">person.fill</i>} label="Yo" />
         </div>
       </div>
     </div>
@@ -279,24 +236,28 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
 
 function TabItem({ href, icon, label, className }: { href: string; icon: ReactNode; label: string; className?: string }) {
   const pathname = usePathname();
-  const isActive = pathname === href;
+  // check if active by base route
+  const isActive = pathname.startsWith(href) && (href !== '/' || pathname === '/');
   return (
-    <Link href={href} className={cn("flex flex-col items-center justify-center w-12 pt-1", className)}>
+    <Link href={href} className={cn("flex flex-col items-center justify-center w-12 pt-1 relative", className)}>
       <div className={cn("mb-1 transition-colors", isActive ? "text-gray-900" : "text-gray-400")}>
         {icon}
       </div>
       <span className={cn("text-[10px] font-semibold tracking-tight transition-colors", isActive ? "text-gray-900" : "text-gray-400")}>{label}</span>
+      {isActive && (
+        <div className="absolute -bottom-1.5 w-1 h-1 rounded-full bg-gray-900" />
+      )}
     </Link>
   );
 }
 
-function FabAction({ icon, label, color, onClick }: { icon: React.ReactNode, label: string, color: string, onClick: () => void }) {
+function FabAction({ icon, label, color, onClick }: { icon: string, label: string, color: string, onClick: () => void }) {
   return (
-    <button onClick={onClick} className="flex flex-col items-center gap-2 group">
-      <div className={cn("w-14 h-14 rounded-full flex items-center justify-center transition-transform active:scale-95", color)}>
-        {icon}
+    <button onClick={onClick} className={cn("flex items-center gap-4 rounded-2xl p-4 transition-transform active:scale-95 group", color)}>
+      <div className="w-8 h-8 flex items-center justify-center">
+        <i className="f7-icons text-2xl">{icon}</i>
       </div>
-      <span className="text-[11px] font-medium text-gray-700">{label}</span>
+      <span className="text-sm font-bold">{label}</span>
     </button>
   );
 }
