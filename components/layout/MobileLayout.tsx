@@ -255,8 +255,8 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
 
         {/* Bottom Tab Bar */}
         <div className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 flex justify-around items-center z-40 pt-2 pb-[calc(10px+env(safe-area-inset-bottom))] min-h-[72px]">
-          <TabItem href="/" icon={<i className="f7-icons text-xl">house.fill</i>} label="Hoy" />
-          <TabItem href="/workout" icon={<i className="f7-icons text-xl">figure.run</i>} label="Entreno" />
+          <TabItem href="/" icon={<i className="f7-icons text-xl">house_fill</i>} label="Hoy" />
+          <TabItem href="/workout" icon={<i className="f7-icons text-xl">figure_run</i>} label="Entreno" />
           
           <div className="relative flex justify-center w-16">
             <button
@@ -270,8 +270,8 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
             </button>
           </div>
 
-          <TabItem href="/diary" icon={<i className="f7-icons text-xl">fork.knife</i>} label="Comer" />
-          <TabItem href="/profile" icon={<i className="f7-icons text-xl">person.fill</i>} label="Yo" />
+          <TabItem href="/diary" icon={<i className="f7-icons text-xl">fork_knife</i>} label="Comer" />
+          <TabItem href="/profile" icon={<i className="f7-icons text-xl">person_fill</i>} label="Yo" />
         </div>
       </div>
     </div>

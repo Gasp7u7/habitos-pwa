@@ -119,7 +119,7 @@ export default function ProgressPage() {
                 )}
               </div>
               <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center">
-                <i className="f7-icons text-lg text-indigo-600">scalemass.fill</i>
+                <i className="f7-icons text-lg text-indigo-600">scalemass_fill</i>
               </div>
             </div>
             
@@ -174,7 +174,7 @@ export default function ProgressPage() {
               <p className="text-3xl font-bold tracking-tight text-[#D4F87A]">
                 {calculateStreak(completedActivities)} días
               </p>
-              <i className="f7-icons text-2xl text-orange-400">flame.fill</i>
+              <i className="f7-icons text-2xl text-orange-400">flame_fill</i>
             </div>
             <p className="text-xs font-semibold text-gray-500 mt-2">
               {(() => {

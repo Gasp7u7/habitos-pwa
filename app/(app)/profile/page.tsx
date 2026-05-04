@@ -141,7 +141,7 @@ export default function ProfilePage() {
           </div>
         </div>
         <button onClick={() => setIsSettingsOpen(true)} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-600 active:scale-95 transition-transform">
-          <i className="f7-icons text-xl text-gray-400">gearshape.fill</i>
+          <i className="f7-icons text-xl text-gray-400">gearshape_fill</i>
         </button>
       </div>
 

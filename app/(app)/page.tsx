@@ -195,7 +195,7 @@ export default function HomePage() {
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center">
                 <i className={cn("f7-icons text-xl", a.type === 'walk' ? 'text-blue-500' : a.type === 'run' ? 'text-orange-500' : a.type === 'cycling' ? 'text-green-500' : 'text-purple-500')}>
-                  {a.type === 'walk' ? 'figure.walk' : a.type === 'run' ? 'figure.run' : a.type === 'cycling' ? 'bicycle' : 'dumbbell.fill'}
+                  {a.type === 'walk' ? 'figure_walk' : a.type === 'run' ? 'figure_run' : a.type === 'cycling' ? 'bicycle' : 'dumbbell_fill'}
                 </i>
               </div>
               <div>
@@ -223,7 +223,7 @@ export default function HomePage() {
         {activities.filter(a => a.status === 'completed').length === 0 && (
           <div className="bg-white border border-gray-100 rounded-[24px] p-6 text-center shadow-sm">
             <div className="w-16 h-16 bg-gray-50 rounded-full mx-auto flex flex-col items-center justify-center mb-3 text-gray-300">
-              <i className="f7-icons text-3xl">figure.run</i>
+              <i className="f7-icons text-3xl">figure_run</i>
             </div>
             <h3 className="text-sm font-bold text-gray-900 mb-1">Sin actividades</h3>
             <p className="text-xs text-gray-500 mb-4 px-2">Aún no has registrado ningún entrenamiento esta semana.</p>

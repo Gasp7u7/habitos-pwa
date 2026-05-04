@@ -63,11 +63,11 @@ export default function WorkoutPage() {
 
   const getIcon = (type: string) => {
     switch (type) {
-      case 'walk': return 'figure.walk';
-      case 'run': return 'figure.run';
+      case 'walk': return 'figure_walk';
+      case 'run': return 'figure_run';
       case 'cycling': return 'bicycle';
-      case 'gym': return 'dumbbell.fill';
-      default: return 'figure.run';
+      case 'gym': return 'dumbbell_fill';
+      default: return 'figure_run';
     }
   };
 
@@ -198,7 +198,7 @@ export default function WorkoutPage() {
             disabled={isGpsRequired && !gpsReady}
             className="bg-[#1a2e00] text-white font-bold w-full py-4 rounded-full active:scale-95 transition-transform disabled:opacity-50 disabled:active:scale-100 flex justify-center items-center gap-2"
           >
-            <i className="f7-icons text-lg">play.fill</i>
+            <i className="f7-icons text-lg">play_fill</i>
             Iniciar {selectedType === 'walk' ? 'caminata' : selectedType === 'run' ? 'carrera' : selectedType === 'gym' ? 'entrenamiento' : 'ruta'}
           </button>
         </div>
@@ -228,7 +228,7 @@ export default function WorkoutPage() {
         <h2 className="text-lg font-bold text-gray-900 mb-4 px-1">Historial</h2>
         {completedActivities.length === 0 ? (
           <div className="bg-white rounded-[32px] border border-dashed border-gray-200 p-8 text-center">
-            <i className="f7-icons text-4xl text-gray-200 block mb-3">figure.run</i>
+            <i className="f7-icons text-4xl text-gray-200 block mb-3">figure_run</i>
             <p className="font-bold text-gray-500 mb-1">Sin actividades todavía</p>
             <p className="text-sm text-gray-400 mb-4">Completa tu primera sesión para verla aquí</p>
             <button
@@ -320,7 +320,7 @@ export default function WorkoutPage() {
                       confirmText="¿Eliminar esta actividad?"
                       color="red"
                     >
-                      <i className="f7-icons text-white">trash.fill</i>
+                      <i className="f7-icons text-white">trash_fill</i>
                     </SwipeoutButton>
                   </SwipeoutActions>
                 </ListItem>

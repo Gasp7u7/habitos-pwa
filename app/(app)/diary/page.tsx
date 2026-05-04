@@ -122,7 +122,7 @@ export default function DiaryPage() {
           onClick={() => setIsSettingsOpen(true)}
           className="w-10 h-10 bg-white border border-gray-200 rounded-full flex items-center justify-center text-gray-600 active:scale-95 transition-transform shadow-sm"
         >
-          <Settings size={20} />
+          <i className="f7-icons text-lg">gearshape_fill</i>
         </button>
       </div>
       <p className="text-gray-500 font-medium text-sm mb-6 capitalize">{format(new Date(), "EEEE d 'de' MMMM", { locale: es })}</p>
@@ -254,7 +254,7 @@ export default function DiaryPage() {
                   confirmText="¿Eliminar esta comida?"
                   color="red"
                 >
-                  <i className="f7-icons text-white">trash.fill</i>
+                  <i className="f7-icons text-white">trash_fill</i>
                 </SwipeoutButton>
               </SwipeoutActions>
             </ListItem>
@@ -329,7 +329,7 @@ export default function DiaryPage() {
                 </div>
                 <SwipeoutActions right>
                   <SwipeoutButton delete color="red">
-                    <i className="f7-icons text-white">trash.fill</i>
+                    <i className="f7-icons text-white">trash_fill</i>
                   </SwipeoutButton>
                 </SwipeoutActions>
               </ListItem>
