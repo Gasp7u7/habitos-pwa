@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { ActivityEntry, MealEntry, WaterEntry, UserProfile, DeviceConnection, FastingEntry, Exercise, Routine } from './types';
-import { addDays, subDays } from 'date-fns';
 import { insertWaterLog, deleteWaterLog, insertMealLog, deleteMealLog, insertFastingLog, endFastingLog } from './supabase/logs';
 import { notifyWaterAdded, notifyMealAdded, notifyFastingComplete } from './notifications/inapp';
 
@@ -60,34 +59,11 @@ const initialProfile: UserProfile = {
   glassSizeMl: 250
 };
 
-const initialActivities: ActivityEntry[] = [
-  {
-    id: 'act_1',
-    userId: 'user_1',
-    type: 'walk',
-    source: 'phone_gps',
-    startedAt: subDays(new Date(), 1).toISOString(),
-    endedAt: subDays(new Date(), 1).toISOString(),
-    status: 'completed',
-    durationSeconds: 2460, // 41 mins
-    movingTimeSeconds: 2400,
-    distanceMeters: 3200,
-    avgPaceSecondsPerKm: 768, // 12:48/km
-    avgSpeedKmh: 4.6,
-    estimatedCalories: 210,
-    route: [],
-    createdAt: subDays(new Date(), 1).toISOString(),
-    updatedAt: subDays(new Date(), 1).toISOString(),
-    mood: 'great',
-    perceivedEffort: 3,
-  }
-];
-
 export const useAppStore = create<AppState>()(
   persist(
     (set, get) => ({
       profile: initialProfile,
-      activities: initialActivities,
+      activities: [],
       meals: [],
       water: [],
       deviceConnections: [],

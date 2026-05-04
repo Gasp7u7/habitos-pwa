@@ -14,6 +14,7 @@ import WeightModal from '../modals/WeightModal';
 import { createClient } from '@/lib/supabase/client';
 import { getProfile } from '@/lib/supabase/profile';
 import { getTodayLogs, getRecentActivities } from '@/lib/supabase/logs';
+import { notifyWaterReminder } from '@/lib/notifications/inapp';
 
 import '@/lib/setup-f7';
 import { Sheet, PageContent, Block } from 'framework7-react';
@@ -126,6 +127,31 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
     };
     loadData();
   }, [hydrateFromSupabase, updateProfile]);
+
+  useEffect(() => {
+    if (!mounted) return;
+
+    const checkWater = () => {
+      const hour = new Date().getHours();
+      // Solo entre 8am y 10pm
+      if (hour < 8 || hour >= 22) return;
+
+      const state = useAppStore.getState();
+      const todayStr = new Date().toISOString().split('T')[0];
+      const todayWater = state.water.filter(w => w.loggedAt.startsWith(todayStr));
+      const totalMl = todayWater.reduce((s, w) => s + w.amountMl, 0);
+      const goalMl = state.profile.dailyGoals.waterMl;
+
+      // Solo notificar si lleva menos del 80% del objetivo
+      if (totalMl < goalMl * 0.8) {
+        notifyWaterReminder(totalMl, goalMl);
+      }
+    };
+
+    // Verificar cada 2 horas (7,200,000 ms)
+    const interval = setInterval(checkWater, 2 * 60 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [mounted]);
 
   if (!mounted) {
     return <div className="flex h-screen w-full bg-gray-100" />;

@@ -63,27 +63,6 @@ export default function DiaryPage() {
     return () => clearInterval(interval);
   }, [currentFast, endFast]);
 
-  useEffect(() => {
-    // Water reminder every 2 hours
-    const interval = setInterval(() => {
-      const currentHour = getHours(new Date());
-      if (currentHour >= 8 && currentHour <= 22) {
-        if (totalWater < profile.dailyGoals.waterMl * 0.8) {
-          if (f7) {
-            f7.notification.create({
-              icon: '<i class="f7-icons text-blue-500">drop_fill</i>',
-              title: 'Recordatorio de agua',
-              subtitle: '¡Hora de hidratarse!',
-              text: `Llevas ${totalWater}ml de ${profile.dailyGoals.waterMl}ml. ¡Toma un vaso más!`,
-              closeTimeout: 5000,
-            }).open();
-          }
-        }
-      }
-    }, 2 * 60 * 60 * 1000);
-    return () => clearInterval(interval);
-  }, [totalWater, profile.dailyGoals.waterMl]);
-
   const handleToggleFast = () => {
     if (currentFast) {
       endFast('early');

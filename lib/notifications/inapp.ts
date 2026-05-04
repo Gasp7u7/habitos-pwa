@@ -1,7 +1,7 @@
 import { f7 } from 'framework7-react';
 
 export function notifyWaterAdded(amountMl: number) {
-  if (!f7) return;
+  if (typeof window === 'undefined') return;
   f7.toast.create({
     text: `¡Agregaste ${amountMl}ml de agua!`,
     closeTimeout: 2000,
@@ -11,7 +11,7 @@ export function notifyWaterAdded(amountMl: number) {
 }
 
 export function notifyMealAdded(name: string) {
-  if (!f7) return;
+  if (typeof window === 'undefined') return;
   f7.toast.create({
     text: `Registraste: ${name}`,
     closeTimeout: 2000,
@@ -21,9 +21,9 @@ export function notifyMealAdded(name: string) {
 }
 
 export function notifyWeightSaved(kg: number) {
-  if (!f7) return;
+  if (typeof window === 'undefined') return;
   f7.toast.create({
-    text: `Peso guardado: ${kg}kg`,
+    text: `Peso guardado: ${kg} kg`,
     closeTimeout: 2000,
     position: 'top',
     cssClass: 'font-bold text-sm bg-indigo-500 text-white',
@@ -31,24 +31,35 @@ export function notifyWeightSaved(kg: number) {
 }
 
 export function notifyFastingComplete(hours: number) {
-  if (!f7) return;
+  if (typeof window === 'undefined') return;
   f7.notification.create({
-    icon: '<i class="f7-icons text-[#D4F87A]">sparkles</i>',
-    title: '¡Ayuno Completado!',
+    title: 'Hábitos',
     titleRightText: 'ahora',
-    subtitle: `${hours} horas de ayuno`,
-    text: 'Excelente trabajo manteniendo tu objetivo.',
-    closeTimeout: 4000,
+    subtitle: '¡Ayuno Completado!',
+    text: `Completaste tu ayuno de ${hours}h. Ya puedes comer.`,
+    closeOnClick: true,
+    closeTimeout: 6000,
   }).open();
 }
 
 export function notifyFriendActivity(name: string, type: string) {
-  if (!f7) return;
+  if (typeof window === 'undefined') return;
   f7.notification.create({
     icon: '<i class="f7-icons text-purple-500">flame_fill</i>',
     title: 'Actividad en tu grupo',
     subtitle: name,
     text: `Acaba de completar ${type}!`,
     closeTimeout: 4000,
+  }).open();
+}
+
+export function notifyWaterReminder(currentMl: number, goalMl: number) {
+  if (typeof window === 'undefined') return;
+  f7.notification.create({
+    title: 'Hidratación',
+    subtitle: 'Recordatorio de agua',
+    text: `Llevas ${(currentMl / 1000).toFixed(1)}L de ${(goalMl / 1000).toFixed(1)}L. ¡Toma un vaso!`,
+    closeOnClick: true,
+    closeTimeout: 5000,
   }).open();
 }
