@@ -1,9 +1,8 @@
 'use client';
 import { Page, PageContent, f7 } from 'framework7-react';
 import { useAppStore } from '@/lib/store';
-import { User, Settings, Watch, Target, Shield, Bell, ChevronRight, Activity } from 'lucide-react';
 import Image from 'next/image';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
 import { createGroup, joinGroup } from '@/lib/mutations/groups';
@@ -19,13 +18,31 @@ export default function ProfilePage() {
     f7.dialog.confirm('¿Estás seguro que quieres cerrar sesión?', 'Cerrar sesión', async () => {
       const supabase = createClient();
       await supabase.auth.signOut();
+
+      // Limpiar TODO el store, no solo algunas propiedades
       useAppStore.setState({
         meals: [],
         water: [],
         activities: [],
+        fastingHistory: [],
         currentFast: null,
         currentActivity: null,
+        profile: {
+          id: '',
+          name: '',
+          email: '',
+          hasCompletedOnboarding: false,
+          primaryGoal: 'active',
+          dietType: 'omnivore',
+          fastingSchedule: 'none',
+          areasForImprovement: [],
+          dailyGoals: { waterMl: 2500, calories: 2200, activityMinutes: 45 },
+          glassSizeMl: 250,
+          groupCode: undefined,
+          groupId: undefined,
+        },
       });
+
       router.push('/login');
     });
   };
@@ -35,12 +52,17 @@ export default function ProfilePage() {
     f7.dialog.prompt('Nombra tu nuevo grupo', 'Crear grupo', async (name) => {
       if (!name) return;
       f7.dialog.preloader('Creando...');
-      const code = await createGroup(name);
-      f7.dialog.close();
-      if (code) {
-        f7.dialog.alert(`Grupo creado! Código: ${code}`);
-      } else {
-        f7.dialog.alert('Hubo un error al crear el grupo.');
+      try {
+        const code = await createGroup(name);
+        f7.dialog.close();
+        if (code) {
+          f7.dialog.alert(`¡Grupo creado! Código: ${code}\n\nCompártelo con tus amigos.`);
+        } else {
+          f7.dialog.alert('Hubo un error al crear el grupo. Intenta de nuevo.');
+        }
+      } catch {
+        f7.dialog.close();
+        f7.dialog.alert('Error inesperado. Intenta de nuevo.');
       }
     });
   };
@@ -50,12 +72,17 @@ export default function ProfilePage() {
     f7.dialog.prompt('Ingresa el código del grupo', 'Unirse a grupo', async (code) => {
       if (!code) return;
       f7.dialog.preloader('Uniéndose...');
-      const success = await joinGroup(code.trim().toUpperCase());
-      f7.dialog.close();
-      if (success) {
-        f7.dialog.alert('Te has unido al grupo!');
-      } else {
-        f7.dialog.alert('Código inválido o error al unirse.');
+      try {
+        const success = await joinGroup(code.trim().toUpperCase());
+        f7.dialog.close();
+        if (success) {
+          f7.dialog.alert('Te has unido al grupo!');
+        } else {
+          f7.dialog.alert('Código inválido o error al unirse.');
+        }
+      } catch {
+        f7.dialog.close();
+        f7.dialog.alert('Error inesperado. Intenta de nuevo.');
       }
     });
   };
@@ -113,8 +140,8 @@ export default function ProfilePage() {
             <p className="text-xs font-semibold text-gray-400 uppercase tracking-widest mt-1">Configuración general</p>
           </div>
         </div>
-        <button className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-600 active:scale-95 transition-transform">
-          <Settings size={20} />
+        <button onClick={() => setIsSettingsOpen(true)} className="w-10 h-10 bg-gray-50 rounded-full flex items-center justify-center text-gray-600 active:scale-95 transition-transform">
+          <i className="f7-icons text-xl text-gray-400">gearshape.fill</i>
         </button>
       </div>
 
@@ -134,7 +161,7 @@ export default function ProfilePage() {
         />
         <div className="h-px w-full bg-gray-50 ml-4" />
         <DeviceItem 
-          icon={<Watch size={20} className="text-gray-400" />} 
+          icon={<i className="f7-icons text-xl text-gray-400">applewatch</i>} 
           title="Dispositivos" 
           subtitle="Garmin, Polar, Strava..." 
           status="Conectar" 
@@ -144,7 +171,7 @@ export default function ProfilePage() {
           <div className="flex items-center gap-3">
             <span className="font-bold text-gray-900 text-sm pl-2">Notificaciones</span>
           </div>
-          <ChevronRight size={18} className="text-gray-300" />
+          <i className="f7-icons text-base text-gray-300">chevron_right</i>
         </div>
       </div>
 
@@ -156,8 +183,10 @@ export default function ProfilePage() {
         <div className="bg-[#D4F87A] rounded-[24px] p-4 flex flex-col justify-between aspect-square">
           <span className="text-[10px] font-bold uppercase tracking-wider text-[#1a2e00]/60 leading-tight">Agua<br/>Objetivo</span>
           <span className="text-lg font-bold text-[#1a2e00]">
-            {(profile.dailyGoals.waterMl / 1000).toFixed(1)}<span className="text-xs ml-0.5 mr-1">L</span>
-            <span className="text-[10px] opacity-70">({Math.ceil(profile.dailyGoals.waterMl / (profile.glassSizeMl || 250))}🥛)</span>
+            {(profile.dailyGoals.waterMl / 1000).toFixed(1)}<span className="text-xs ml-0.5">L</span>
+            <span className="text-[10px] opacity-70 flex items-center justify-start mt-0.5 whitespace-nowrap">
+              ({Math.ceil(profile.dailyGoals.waterMl / (profile.glassSizeMl || 250))} vasos)
+            </span>
           </span>
         </div>
         <div className="bg-orange-100 rounded-[24px] p-4 flex flex-col justify-between aspect-square">
@@ -188,7 +217,7 @@ function DeviceItem({ icon, title, subtitle, status }: { icon: React.ReactNode, 
           <p className="text-[10px] text-gray-400 font-bold uppercase tracking-wider mt-0.5">{subtitle}</p>
         </div>
       </div>
-      <ChevronRight size={18} className="text-gray-300" />
+      <i className="f7-icons text-base text-gray-300">chevron_right</i>
     </div>
   );
 }
@@ -199,7 +228,7 @@ function GoalItem({ title, value, onClick }: { title: string, value: string, onC
       <span className="font-bold text-gray-900 text-sm pl-2">{title}</span>
       <div className="flex items-center gap-2">
         <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">{value}</span>
-        <ChevronRight size={18} className="text-gray-300" />
+        <i className="f7-icons text-base text-gray-300">chevron_right</i>
       </div>
     </div>
   );

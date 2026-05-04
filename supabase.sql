@@ -188,3 +188,37 @@ create policy "Users own their meal logs" on meal_logs for all using (auth.uid()
 create policy "Users own their fasting logs" on fasting_logs for all using (auth.uid() = user_id);
 create policy "Users own their activity logs" on activity_logs for all using (auth.uid() = user_id);
 create policy "Users own their gps routes" on gps_routes for all using (auth.uid() = user_id);
+
+-- ============================================
+-- GROUPS
+-- ============================================
+create table if not exists groups (
+  id uuid primary key default gen_random_uuid(),
+  name text not null,
+  invite_code text unique not null,
+  created_by uuid not null references profiles(id),
+  created_at timestamptz default now()
+);
+
+create table if not exists group_members (
+  id uuid primary key default gen_random_uuid(),
+  group_id uuid not null references groups(id) on delete cascade,
+  user_id uuid not null references profiles(id) on delete cascade,
+  joined_at timestamptz default now(),
+  unique (group_id, user_id)
+);
+
+alter table groups enable row level security;
+alter table group_members enable row level security;
+
+create policy "Members see their group" on groups for select
+  using (id in (select group_id from group_members where user_id = auth.uid()));
+
+create policy "Creator can insert group" on groups for insert
+  with check (created_by = auth.uid());
+
+create policy "Members see membership" on group_members for select
+  using (user_id = auth.uid());
+
+create policy "Users can join groups" on group_members for insert
+  with check (user_id = auth.uid());

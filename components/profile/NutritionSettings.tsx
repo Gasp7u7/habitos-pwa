@@ -1,9 +1,9 @@
 'use client';
 import { useState, useEffect } from 'react';
 import { Sheet, PageContent, Block } from 'framework7-react';
-import { X, Check } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
+import { createClient } from '@/lib/supabase/client';
 
 const DIETS = [
   { id: 'omnivore', title: 'Omnívora', desc: 'Como de todo' },
@@ -50,18 +50,48 @@ export default function NutritionSettings({ isOpen, onClose }: { isOpen: boolean
     }
   }, [weightKg]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    const caloriesNum = parseInt(calories) || 2200;
+    const waterNum = parseInt(water) || 2500;
+    const weightNum = weightKg ? parseFloat(weightKg) : undefined;
+    const glassSizeNum = parseInt(glassSizeMl) || 250;
+
     updateProfile({
-      dietType,
-      fastingSchedule,
-      weightKg: weightKg ? parseInt(weightKg) : undefined,
-      glassSizeMl: parseInt(glassSizeMl) || 250,
+      dietType: dietType as any,
+      fastingSchedule: fastingSchedule as any,
+      weightKg: weightNum,
+      glassSizeMl: glassSizeNum,
       dailyGoals: {
         ...profile.dailyGoals,
-        calories: parseInt(calories) || 2000,
-        waterMl: parseInt(water) || 2500,
+        calories: caloriesNum,
+        waterMl: waterNum,
       }
     });
+
+    try {
+      const supabase = createClient();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase.from('profiles').update({
+          diet_type: dietType,
+          fasting_schedule: fastingSchedule,
+          weight_kg: weightNum || null,
+          daily_calories: caloriesNum,
+          daily_water_ml: waterNum,
+          updated_at: new Date().toISOString(),
+        }).eq('id', user.id);
+
+        if (weightNum && weightNum !== profile.weightKg) {
+          await supabase.from('weight_logs').insert({
+            user_id: user.id,
+            weight_kg: weightNum,
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Error saving nutrition settings:', e);
+    }
+
     onClose();
   };
 
@@ -99,7 +129,7 @@ export default function NutritionSettings({ isOpen, onClose }: { isOpen: boolean
                   </div>
                   {dietType === diet.id && (
                     <div className="w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center">
-                      <Check size={14} />
+                      <i className="f7-icons text-lg">checkmark</i>
                     </div>
                   )}
                 </button>
@@ -125,7 +155,7 @@ export default function NutritionSettings({ isOpen, onClose }: { isOpen: boolean
                   </div>
                   {fastingSchedule === fast.id && (
                     <div className="w-6 h-6 rounded-full bg-gray-900 text-white flex items-center justify-center">
-                      <Check size={14} />
+                      <i className="f7-icons text-lg">checkmark</i>
                     </div>
                   )}
                 </button>

@@ -27,8 +27,13 @@ export default function WeightModal({ isOpen, onClose }: WeightModalProps) {
     const weightNum = parseFloat(weight);
     if (!weight || isNaN(weightNum)) return;
     
+    const newWaterGoal = Math.round(weightNum * 35);
     updateProfile({
-      weightKg: weightNum
+      weightKg: weightNum,
+      dailyGoals: {
+        ...useAppStore.getState().profile.dailyGoals,
+        waterMl: newWaterGoal,
+      },
     });
     notifyWeightSaved(weightNum);
     
@@ -40,7 +45,10 @@ export default function WeightModal({ isOpen, onClose }: WeightModalProps) {
         weight_kg: weightNum,
       });
       await (supabase.from('profiles') as any)
-        .update({ weight_kg: weightNum })
+        .update({ 
+          weight_kg: weightNum,
+          daily_water_ml: newWaterGoal
+        })
         .eq('id', user.id);
     }
     

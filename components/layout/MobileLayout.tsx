@@ -62,6 +62,22 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
             },
             glassSizeMl: profileData.glass_size_ml || 250,
           });
+
+          try {
+            const { data: membership } = await supabase
+              .from('group_members')
+              .select('group_id, groups(invite_code, name)')
+              .eq('user_id', user.id)
+              .maybeSingle();
+
+            if (membership?.groups) {
+              const group = membership.groups as any;
+              updateProfile({
+                groupId: membership.group_id,
+                groupCode: group.invite_code,
+              });
+            }
+          } catch { /* silencioso */ }
         }
 
         if (todayData.water || todayData.meals || todayData.fasting) {
