@@ -1,10 +1,10 @@
 'use client';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
-import { Dumbbell, PersonStanding, Flame, Search, PlayCircle } from 'lucide-react';
+
 
 import { MuscleGroup, Environment, Exercise, Routine, RoutineExercise } from '@/lib/types';
-import { Plus, X, Settings2 } from 'lucide-react';
+
 import { useAppStore } from '@/lib/store';
 import { useRouter } from 'next/navigation';
 
@@ -193,7 +193,7 @@ export default function ExerciseLibrary() {
           className={cn("flex-1 py-2.5 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors", viewMode === 'routines' ? 'bg-[#D4F87A] text-[#1a2e00] shadow-sm' : 'text-gray-500')}
           onClick={() => setViewMode('routines')}
         >
-          <Flame size={16} /> Rutinas Armadas
+          <i className="f7-icons text-base">flame_fill</i> Rutinas Armadas
         </button>
       </div>
 
@@ -204,7 +204,7 @@ export default function ExerciseLibrary() {
               <div className="flex justify-between items-center mb-2">
                 <h3 className="font-bold text-xl text-gray-900">Nuevo Ejercicio</h3>
                 <button onClick={() => setIsCreatingExercise(false)} className="text-gray-400 hover:text-gray-600">
-                   <X size={24} />
+                   <i className="f7-icons text-2xl">xmark</i>
                 </button>
               </div>
               
@@ -315,7 +315,7 @@ export default function ExerciseLibrary() {
           <div className="flex flex-col gap-4">
             <div className="relative">
               <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                <Search className="h-5 w-5 text-gray-400" />
+                <i className="f7-icons text-xl text-gray-400">search</i>
               </div>
               <input
                 type="text"
@@ -370,7 +370,7 @@ export default function ExerciseLibrary() {
             onClick={() => setIsCreatingExercise(true)}
             className="w-full bg-white border border-gray-200 text-gray-900 rounded-[20px] py-3.5 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
           >
-            <Plus size={18} /> Añadir Ejercicio Personalizado
+            <i className="f7-icons text-lg">plus</i> Añadir Ejercicio Personalizado
           </button>
 
           {/* Exercise List */}
@@ -402,7 +402,7 @@ export default function ExerciseLibrary() {
                     {ex.description}
                   </p>
                   <button className="flex items-center gap-2 text-indigo-600 font-bold text-sm mt-1">
-                    <PlayCircle size={16} /> Ver tutorial
+                    <i className="f7-icons text-base">play_circle_fill</i> Ver tutorial
                   </button>
                 </div>
               ))
@@ -422,7 +422,7 @@ export default function ExerciseLibrary() {
               <div className="flex justify-between items-center mb-2">
                 <h3 className="font-bold text-xl text-gray-900">Nueva Rutina</h3>
                 <button onClick={() => setIsCreatingRoutine(false)} className="text-gray-400 hover:text-gray-600">
-                   <X size={24} />
+                   <i className="f7-icons text-2xl">xmark</i>
                 </button>
               </div>
               
@@ -559,7 +559,7 @@ export default function ExerciseLibrary() {
                 onClick={() => setIsCreatingRoutine(true)}
                 className="w-full bg-white border border-gray-200 text-gray-900 rounded-[20px] py-3.5 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform mb-2"
               >
-                <Plus size={18} /> Crear Rutina Personalizada
+                <i className="f7-icons text-lg">plus</i> Crear Rutina Personalizada
               </button>
 
               {ALL_ROUTINES.map(routine => (

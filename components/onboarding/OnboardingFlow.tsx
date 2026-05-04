@@ -2,22 +2,21 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useAppStore } from '@/lib/store';
-import { ArrowRight, Check, Activity, Target, Brain, Flame, Droplet, User, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
 const GOALS = [
-  { id: 'lose_weight', title: 'Bajar de peso', icon: <Flame size={20} className="text-orange-500" /> },
-  { id: 'build_muscle', title: 'Ganar masa muscular', icon: <Activity size={20} className="text-purple-500" /> },
-  { id: 'active', title: 'Mantenerme activo', icon: <Target size={20} className="text-blue-500" /> },
-  { id: 'endurance', title: 'Mejorar resistencia', icon: <Brain size={20} className="text-green-500" /> },
+  { id: 'lose_weight', title: 'Bajar de peso', icon: <i className="f7-icons text-xl text-orange-500">flame_fill</i> },
+  { id: 'build_muscle', title: 'Ganar masa muscular', icon: <i className="f7-icons text-xl text-purple-500">bolt_fill</i> },
+  { id: 'active', title: 'Mantenerme activo', icon: <i className="f7-icons text-xl text-blue-500">target</i> },
+  { id: 'endurance', title: 'Mejorar resistencia', icon: <i className="f7-icons text-xl text-green-500">heart_fill</i> },
 ];
 
 const AREAS = [
-  { id: 'water', title: 'Tomar más agua', icon: <Droplet size={18} className="text-blue-500" /> },
-  { id: 'sleep', title: 'Dormir mejor', icon: <Brain size={18} className="text-indigo-500" /> },
-  { id: 'consistency', title: 'Constancia', icon: <Target size={18} className="text-orange-500" /> },
-  { id: 'nutrition', title: 'Comer más sano', icon: <Flame size={18} className="text-green-500" /> },
+  { id: 'water', title: 'Tomar más agua', icon: <i className="f7-icons text-lg text-blue-500">drop_fill</i> },
+  { id: 'sleep', title: 'Dormir mejor', icon: <i className="f7-icons text-lg text-indigo-500">moon_fill</i> },
+  { id: 'consistency', title: 'Constancia', icon: <i className="f7-icons text-lg text-orange-500">target</i> },
+  { id: 'nutrition', title: 'Comer más sano', icon: <i className="f7-icons text-lg text-green-500">flame_fill</i> },
 ];
 
 const DIETS = [
@@ -140,7 +139,7 @@ export default function OnboardingFlow() {
           >
             <div className="flex-1 flex flex-col justify-center max-w-sm mx-auto w-full">
               <div className="w-16 h-16 bg-blue-50 rounded-2xl flex items-center justify-center mb-6">
-                <User size={32} className="text-blue-600" />
+                <i className="f7-icons text-3xl text-blue-600">person_fill</i>
               </div>
               <h1 className="text-3xl font-bold text-gray-900 mb-3 tracking-tight">¡Hola! Empecemos.</h1>
               <p className="text-gray-500 mb-8 leading-relaxed">
@@ -160,7 +159,7 @@ export default function OnboardingFlow() {
                 onClick={nextStep}
                 className="w-full bg-gray-900 text-white font-bold rounded-2xl p-4 flex items-center justify-center gap-2 disabled:opacity-50 disabled:active:scale-100 active:scale-95 transition-all"
               >
-                Continuar <ArrowRight size={20} />
+                Continuar <i className="f7-icons text-xl">arrow_right</i>
               </button>
             </div>
           </motion.div>

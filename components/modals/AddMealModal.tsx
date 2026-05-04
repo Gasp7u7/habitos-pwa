@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Utensils } from 'lucide-react';
+
 import { useAppStore } from '@/lib/store';
 import { Sheet, PageContent, Block } from 'framework7-react';
 
@@ -53,7 +53,7 @@ export default function AddMealModal({ isOpen, onClose }: AddMealModalProps) {
           <div className="flex justify-between items-center mb-6 pt-2">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center">
-                  <Utensils size={20} className="text-green-600" />
+                  <i className="f7-icons text-xl text-green-600">plus_app_fill</i>
                 </div>
                 <h2 className="text-xl font-bold text-gray-900">Agregar Comida</h2>
               </div>

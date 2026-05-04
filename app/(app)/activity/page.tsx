@@ -2,7 +2,6 @@
 import { useState, useEffect, Suspense, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAppStore } from '@/lib/store';
-import { Activity, MapPin, Play, Pause, Square, Map as MapIcon, Share2, Target, Zap, Dumbbell, Bike, PersonStanding, Flame, Clock, CheckCircle2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { DEFAULT_EXERCISES } from '@/components/workouts/ExerciseLibrary';
 import GpsPermissionState from '@/components/gps/GpsPermissionState';
@@ -201,7 +200,7 @@ function ActivityContent() {
 
         <div className="bg-[#D4F87A] rounded-[32px] p-6 mb-8 text-center flex flex-col items-center shadow-sm relative overflow-hidden">
           <div className="w-16 h-16 bg-white/40 backdrop-blur-sm rounded-full flex items-center justify-center mb-4 border border-white/50">
-            {activityType === 'gym' ? <Dumbbell size={32} strokeWidth={2.5} className="text-gray-900" /> : <Target size={32} strokeWidth={2.5} className="text-gray-900" />}
+            {activityType === 'gym' ? <i className="f7-icons text-3xl text-gray-900">dumbbell_fill</i> : <i className="f7-icons text-3xl text-gray-900">scope</i>}
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-1">¿Listo para moverte?</h2>
           <p className="text-sm font-medium text-gray-900/60 mb-6 relative z-10">
@@ -216,7 +215,7 @@ function ActivityContent() {
               canStart ? "bg-gray-900 text-white hover:bg-black active:scale-95" : "bg-gray-300 text-gray-500 cursor-not-allowed"
             )}
           >
-            <Play size={20} className="fill-current" /> Iniciar {getLabel(activityType)}
+            <i className="f7-icons text-xl fill-current">play_fill</i> Iniciar {getLabel(activityType)}
           </button>
         </div>
       </div>
@@ -354,15 +353,15 @@ function ActivityContent() {
         <div className="flex justify-between items-center pt-8 mb-auto">
           {isGpsActive ? (
             <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full flex gap-2 items-center text-xs font-semibold text-[#D4F87A]">
-              <MapPin size={14} className="fill-current" /> GPS Excelente
+              <i className="f7-icons text-xs">location_fill</i> GPS Excelente
             </div>
           ) : (
             <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full flex gap-2 items-center text-xs font-semibold text-[#D4F87A]">
-              <Dumbbell size={14} className="fill-current" /> Modo Indoor
+              <i className="f7-icons text-xs">dumbbell_fill</i> Modo Indoor
             </div>
           )}
           <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full flex gap-2 items-center text-xs font-semibold text-white">
-            <Zap size={14} className="text-[#D4F87A]" /> {getLabel(currentActivity.type)}
+            <i className="f7-icons text-xs text-[#D4F87A]">bolt_fill</i> {getLabel(currentActivity.type)}
           </div>
         </div>
 
@@ -377,7 +376,7 @@ function ActivityContent() {
             <div className="bg-black/40 backdrop-blur-md rounded-[32px] p-6 grid grid-cols-2 w-full gap-8 border border-white/10 relative mt-4">
               {restTimer !== null && restTimer > 0 && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-indigo-500 text-white px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 shadow-lg animate-pulse">
-                  <Clock size={14} /> Descanso: {restTimer}s
+                  <i className="f7-icons text-xs">clock_fill</i> Descanso: {restTimer}s
                 </div>
               )}
                <>
@@ -404,13 +403,13 @@ function ActivityContent() {
               }}
               className="bg-white/10 backdrop-blur-md text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 border border-white/20 active:bg-white/20 transition-colors"
             >
-              <Target size={18} /> +1 Serie
+              <i className="f7-icons text-lg">bolt_fill</i> +1 Serie
             </button>
             <button 
               onClick={() => setRestTimer(timer => timer ? null : 60)}
               className="bg-indigo-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 active:bg-indigo-600 transition-colors"
             >
-              <Clock size={18} /> {restTimer ? 'Parar Reloj' : '+ Descanso'}
+              <i className="f7-icons text-lg">clock_fill</i> {restTimer ? 'Parar Reloj' : '+ Descanso'}
             </button>
           </div>
         )}
@@ -447,13 +446,13 @@ function ActivityContent() {
                 }}
                 className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center active:scale-95 transition-transform"
               >
-                <Square size={28} className="fill-white drop-shadow-md text-white" />
+                <i className="f7-icons text-3xl drop-shadow-md text-white">stop_fill</i>
               </button>
               <button 
                 onClick={resumeActivity}
                 className="w-20 h-20 bg-[#D4F87A] rounded-full flex items-center justify-center active:scale-95 transition-transform"
               >
-                <Play size={32} className="fill-gray-900 text-gray-900 ml-1.5 drop-shadow-md" />
+                <i className="f7-icons text-4xl drop-shadow-md ml-1 text-gray-900">play_fill</i>
               </button>
             </>
           ) : (
@@ -461,7 +460,7 @@ function ActivityContent() {
               onClick={pauseActivity}
               className="w-20 h-20 bg-[#D4F87A] rounded-full flex items-center justify-center active:scale-95 transition-transform"
             >
-              <Pause size={28} className="fill-gray-900 text-gray-900 drop-shadow-md" />
+              <i className="f7-icons text-3xl drop-shadow-md text-gray-900">pause_fill</i>
             </button>
           )}
         </div>

@@ -1,7 +1,6 @@
 'use client';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/lib/store';
-import { Activity, ArrowRight, Clock } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { format, isSameDay, differenceInHours, differenceInMinutes, subDays } from 'date-fns';
@@ -174,7 +173,7 @@ export default function HomePage() {
       {profile.groupCode && (
         <div className="mb-8 p-6 rounded-[24px] border-2 border-dashed border-gray-200 text-center">
           <div className="w-12 h-12 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-3">
-            <Activity size={24} />
+            <i className="f7-icons text-2xl">person_3_fill</i>
           </div>
           <h3 className="text-sm font-bold text-gray-900 mb-1">El grupo hoy</h3>
           <p className="text-xs text-gray-500 mb-4 px-4">Invita a tus amigos con el código <strong>{profile.groupCode}</strong></p>

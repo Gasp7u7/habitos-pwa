@@ -1,6 +1,5 @@
 'use client';
 import { useState } from 'react';
-import { Activity, Droplet, Flame, MapPin, Map, Share2, MapIcon, PersonStanding, Dumbbell, Bike, Clock, ChevronRight, Trophy, Target, BookOpen } from 'lucide-react';
 import { useAppStore } from '@/lib/store';
 import { format, isThisWeek } from 'date-fns';
 import { es } from 'date-fns/locale';
@@ -29,11 +28,11 @@ export default function WorkoutsPage() {
 
   const getIcon = (type: string) => {
     switch (type) {
-      case 'walk': return <PersonStanding size={24} className="text-purple-600" />;
-      case 'run': return <Activity size={24} className="text-red-600" />;
-      case 'cycling': return <Bike size={24} className="text-sky-600" />;
-      case 'gym': return <Dumbbell size={24} className="text-slate-700" />;
-      default: return <Activity size={24} className="text-gray-600" />;
+      case 'walk': return <i className="f7-icons text-2xl text-purple-600">figure_walk</i>;
+      case 'run': return <i className="f7-icons text-2xl text-red-600">figure_run</i>;
+      case 'cycling': return <i className="f7-icons text-2xl text-sky-600">bicycle</i>;
+      case 'gym': return <i className="f7-icons text-2xl text-slate-700">dumbbell_fill</i>;
+      default: return <i className="f7-icons text-2xl text-gray-600">bolt_fill</i>;
     }
   };
 
@@ -77,7 +76,7 @@ export default function WorkoutsPage() {
           className={cn("flex-1 py-2.5 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors", activeTab === 'library' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500')}
           onClick={() => setActiveTab('library')}
         >
-          <BookOpen size={16} /> Biblioteca
+          <i className="f7-icons text-base">book_fill</i> Biblioteca
         </button>
       </div>
 
@@ -93,7 +92,7 @@ export default function WorkoutsPage() {
             </div>
           </div>
           <div className="w-12 h-12 bg-[#D4F87A] rounded-full flex items-center justify-center text-[#1a2e00]">
-            <Trophy size={20} />
+            <i className="f7-icons text-xl">star_fill</i>
           </div>
         </div>
         
@@ -217,7 +216,7 @@ export default function WorkoutsPage() {
 
         {filteredActivities.length === 0 && (
           <div className="bg-white rounded-[32px] p-8 text-center border border-gray-100 text-gray-500 shadow-sm mt-8">
-            <Target className="mx-auto mb-4 opacity-20" size={48} />
+            <i className="f7-icons text-5xl mx-auto mb-4 opacity-20">bolt_fill</i>
             <p className="font-bold text-gray-900 mb-1">No hay entrenamientos</p>
             <p className="text-sm">Aún no has registrado actividades de este tipo.</p>
           </div>

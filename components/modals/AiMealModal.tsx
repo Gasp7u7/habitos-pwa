@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Sparkles, Send } from 'lucide-react';
+
 import { useAppStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
 import { Sheet, PageContent, Block } from 'framework7-react';
@@ -67,7 +67,7 @@ export default function AiMealModal({ isOpen, onClose }: AiMealModalProps) {
           <div className="flex justify-between items-center mb-6 pt-2">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center">
-                  <Sparkles size={20} className="text-orange-500 box-content p-1" />
+                  <i className="f7-icons text-xl text-orange-500 box-content p-1">sparkles</i>
                 </div>
                 <div>
                     <h2 className="text-xl font-bold text-gray-900">Coach Nutricional IA</h2>
@@ -115,7 +115,7 @@ export default function AiMealModal({ isOpen, onClose }: AiMealModalProps) {
               )}
               style={{ marginBottom: 'env(safe-area-inset-bottom, 20px)' }}
             >
-              <Send size={18} />
+              <i className="f7-icons text-lg">paperplane_fill</i>
               Procesar con IA
             </button>
         </Block>

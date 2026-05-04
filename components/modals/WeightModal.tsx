@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { Scale } from 'lucide-react';
+
 import { useAppStore } from '@/lib/store';
 import { Sheet, PageContent, Block } from 'framework7-react';
 
@@ -69,7 +69,7 @@ export default function WeightModal({ isOpen, onClose }: WeightModalProps) {
           <div className="flex justify-between items-center mb-6 pt-2">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center">
-                  <Scale size={20} className="text-indigo-600" />
+                  <i className="f7-icons text-xl text-indigo-600">scalemass_fill</i>
                 </div>
                 <h2 className="text-xl font-bold text-gray-900">Registrar Peso</h2>
               </div>

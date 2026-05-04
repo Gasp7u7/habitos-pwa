@@ -2,7 +2,6 @@
 import { ReactNode, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/lib/store';
@@ -267,7 +266,7 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
                 isFabOpen ? "bg-gray-900 rotate-45" : "bg-[#D4F87A] shadow-[#D4F87A]/40"
               )}
             >
-              <Plus size={28} strokeWidth={2.5} className={isFabOpen ? "text-white" : "text-gray-900"} />
+              <i className={cn("f7-icons text-3xl", isFabOpen ? "text-white" : "text-gray-900", "transition-transform", isFabOpen ? "rotate-45" : "rotate-0")}>plus</i>
             </button>
           </div>
 

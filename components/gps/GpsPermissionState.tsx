@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect } from 'react';
-import { MapPin, NavigationOff, AlertCircle } from 'lucide-react';
+
 
 export default function GpsPermissionState({ onReady }: { onReady: () => void }) {
   const [status, setStatus] = useState<'checking' | 'granted' | 'denied' | 'error'>('checking');
@@ -53,7 +53,7 @@ export default function GpsPermissionState({ onReady }: { onReady: () => void })
   if (status === 'denied') {
     return (
       <div className="bg-red-50 text-red-700 p-4 rounded-xl flex items-start gap-3 mb-6">
-        <NavigationOff className="shrink-0 mt-0.5" size={20} />
+        <i className="f7-icons text-xl shrink-0 mt-0.5">location_slash_fill</i>
         <div>
           <h3 className="font-bold text-sm">Permiso denegado</h3>
           <p className="text-xs">Para registrar tu ruta debes habilitar el GPS en la configuración de tu navegador.</p>
@@ -65,7 +65,7 @@ export default function GpsPermissionState({ onReady }: { onReady: () => void })
   if (status === 'error') {
      return (
       <div className="bg-orange-50 text-orange-700 p-4 rounded-xl flex items-start gap-3 mb-6">
-        <AlertCircle className="shrink-0 mt-0.5" size={20} />
+        <i className="f7-icons text-xl shrink-0 mt-0.5">exclamationmark_triangle_fill</i>
         <div>
           <h3 className="font-bold text-sm">Error GPS</h3>
           <p className="text-xs">{errorMessage}</p>
@@ -76,7 +76,7 @@ export default function GpsPermissionState({ onReady }: { onReady: () => void })
 
   return (
     <div className="bg-green-50 text-green-700 p-4 rounded-xl flex items-center gap-3 mb-6">
-      <MapPin size={20} />
+      <i className="f7-icons text-xl">placemark_fill</i>
       <span className="font-bold text-sm">GPS listo para registrar tu ruta</span>
     </div>
   );

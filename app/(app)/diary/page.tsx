@@ -1,7 +1,6 @@
 'use client';
 import { Page, PageContent, List, ListItem, SwipeoutActions, SwipeoutButton, f7 } from 'framework7-react';
 import { useAppStore } from '@/lib/store';
-import { Utensils, Droplet, Flame, Trash2, Clock, Sparkles, Settings } from 'lucide-react';
 import { format, differenceInMinutes, getHours } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useState, useEffect } from 'react';
@@ -136,7 +135,7 @@ export default function DiaryPage() {
           <div className="flex items-center justify-between mb-4 relative z-10">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-full bg-gray-800 flex items-center justify-center">
-                <Clock size={18} className={currentFast ? "text-[#D4F87A]" : "text-gray-400"} />
+                <i className={"f7-icons text-lg " + (currentFast ? "text-[#D4F87A]" : "text-gray-400")}>clock_fill</i>
               </div>
               <div>
                 <span className="font-bold text-white block">Ayuno {profile.fastingSchedule}</span>
@@ -207,7 +206,7 @@ export default function DiaryPage() {
                 <span className="text-3xl font-bold text-[#1a2e00] leading-none tabular-nums mt-1 block">{totalCalories}</span>
               </div>
               <div className="w-8 h-8 rounded-full bg-white/40 flex items-center justify-center">
-                <Flame size={16} className="text-[#1a2e00]" />
+                <i className="f7-icons text-base text-[#1a2e00]">flame_fill</i>
               </div>
             </div>
             <div className="text-xs font-medium text-[#1a2e00]/60 mt-2">kcal / {profile.dailyGoals.calories}</div>
@@ -219,7 +218,7 @@ export default function DiaryPage() {
                 <span className="text-3xl font-bold text-gray-900 leading-none tabular-nums mt-1 block">{totalWater}</span>
               </div>
               <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center">
-                <Droplet size={16} className="text-blue-500" />
+                <i className="f7-icons text-base text-blue-500">drop_fill</i>
               </div>
             </div>
             <div className="text-xs font-medium text-gray-400 mt-2">ml / {profile.dailyGoals.waterMl}</div>
@@ -276,7 +275,7 @@ export default function DiaryPage() {
             onClick={() => useAppStore.getState().addWater()}
             className="w-14 h-14 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center active:scale-95 transition-transform"
           >
-            <Droplet size={24} strokeWidth={2.5} />
+            <i className="f7-icons text-2xl">drop_fill</i>
           </button>
         </div>
 
