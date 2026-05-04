@@ -12,10 +12,10 @@ export default function RegisterPage() {
   const handleRegister = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setError(null);
-    const form = e.target as HTMLFormElement;
-    const email = form.email.value;
-    const password = form.password.value;
-    const name = form.name.value;
+    const form = e.currentTarget;
+    const email = (form.elements.namedItem('email') as HTMLInputElement).value;
+    const password = (form.elements.namedItem('password') as HTMLInputElement).value;
+    const name = (form.elements.namedItem('name') as HTMLInputElement).value;
 
     const { error } = await supabase.auth.signUp({
       email,

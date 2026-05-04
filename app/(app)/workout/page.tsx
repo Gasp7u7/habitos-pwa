@@ -29,6 +29,7 @@ export default function WorkoutPage() {
 
   useEffect(() => {
     if (isGpsRequired && 'geolocation' in navigator) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setGpsReady(false);
       navigator.geolocation.getCurrentPosition(
         () => setGpsReady(true),
@@ -36,6 +37,7 @@ export default function WorkoutPage() {
         { enableHighAccuracy: true, timeout: 5000 }
       );
     } else if (!isGpsRequired) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setGpsReady(true);
     }
   }, [selectedType, isGpsRequired]);

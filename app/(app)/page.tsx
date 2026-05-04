@@ -6,7 +6,9 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { format, isSameDay } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { Swiper, SwiperSlide } from 'framework7-react';
+import { useState } from 'react';
+import { Swiper, SwiperSlide } from 'swiper/react';
+import 'swiper/css';
 
 export default function HomePage() {
   const { profile, activities, meals, water, currentFast } = useAppStore();

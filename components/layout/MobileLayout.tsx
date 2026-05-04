@@ -15,8 +15,9 @@ import { createClient } from '@/lib/supabase/client';
 import { getProfile } from '@/lib/supabase/profile';
 import { getTodayLogs, getRecentActivities } from '@/lib/supabase/logs';
 
-import { Framework7 } from 'framework7/lite';
-import Framework7React, { Sheet, PageContent, Block } from 'framework7-react';
+import { Sheet, PageContent, Block } from 'framework7-react';
+import Framework7 from 'framework7/lite-bundle';
+import Framework7React from 'framework7-react';
 
 // eslint-disable-next-line react-hooks/rules-of-hooks
 Framework7.use(Framework7React);
@@ -125,7 +126,7 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
       setMounted(true);
     };
     loadData();
-  }, []);
+  }, [hydrateFromSupabase, updateProfile]);
 
   if (!mounted) {
     return <div className="flex h-screen w-full bg-gray-100" />;
@@ -154,7 +155,6 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
         <Sheet
           opened={isFabOpen}
           onSheetClosed={() => setIsFabOpen(false)}
-          openedChange={(opened) => setIsFabOpen(opened)}
           style={{ height: 'auto', borderRadius: '24px 24px 0 0' }}
           swipeToClose
           backdrop

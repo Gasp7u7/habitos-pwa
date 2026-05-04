@@ -32,6 +32,7 @@ export default function NutritionSettings({ isOpen, onClose }: { isOpen: boolean
   
   useEffect(() => {
     if (isOpen) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setDietType(profile.dietType || 'omnivore');
       setFastingSchedule(profile.fastingSchedule || 'none');
       setCalories(profile.dailyGoals.calories.toString());
@@ -44,6 +45,7 @@ export default function NutritionSettings({ isOpen, onClose }: { isOpen: boolean
   useEffect(() => {
     if (weightKg && parseInt(weightKg) > 0) {
       const calculatedWaterMl = parseInt(weightKg) * 35;
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setWater(calculatedWaterMl.toString());
     }
   }, [weightKg]);

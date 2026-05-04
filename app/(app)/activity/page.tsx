@@ -133,7 +133,7 @@ function ActivityContent() {
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [currentActivity?.status, updateCurrentActivityMetrics]);
+  }, [currentActivity?.status, currentActivity?.durationSeconds, updateCurrentActivityMetrics]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
