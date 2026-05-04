@@ -18,7 +18,7 @@ export default function WeightModal({ isOpen, onClose }: WeightModalProps) {
   
   useEffect(() => {
     if (isOpen) {
-      // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/set-state-in-effect
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setWeight(profile.weightKg?.toString() || '');
     }
   }, [isOpen, profile]);

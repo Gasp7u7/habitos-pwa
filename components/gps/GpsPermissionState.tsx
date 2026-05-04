@@ -11,9 +11,8 @@ export default function GpsPermissionState({ onReady }: { onReady: () => void })
     
     if (!('geolocation' in navigator)) {
       if (mounted) {
-        // eslint-disable-next-line react-hooks/set-state-in-effect
+        // eslint-disable-next-line
         setStatus('error');
-        // eslint-disable-next-line react-hooks/set-state-in-effect
         setErrorMessage('GPS no disponible en este dispositivo');
       }
       return;

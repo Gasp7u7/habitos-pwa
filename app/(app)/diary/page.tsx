@@ -5,26 +5,36 @@ import { Utensils, Droplet, Flame, Trash2, Clock, Sparkles, Settings } from 'luc
 import { format, differenceInMinutes, getHours } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 import NutritionSettings from '@/components/profile/NutritionSettings';
 import { cn } from '@/lib/utils';
 import { notifyFastingComplete } from '@/lib/notifications/inapp';
+import { createClient } from '@/lib/supabase/client';
+import { getTodayLogs } from '@/lib/supabase/logs';
 
 export default function DiaryPage() {
-  const { meals, water, deleteMeal, deleteWater, profile, currentFast, startFast, endFast } = useAppStore();
+  const { meals, water, deleteMeal, deleteWater, profile, currentFast, startFast, endFast, hydrateFromSupabase } = useAppStore();
   const [fastingProgress, setFastingProgress] = useState(0);
   const [fastingElapsedStr, setFastingElapsedStr] = useState('00:00');
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
-  // Sort by latest
-  const sortedMeals = [...meals].sort((a, b) => new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime());
-  const sortedWater = [...water].sort((a, b) => new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime());
+  const todayStr = new Date().toISOString().split('T')[0];
 
-  const totalCalories = meals.reduce((sum, m) => sum + m.calories, 0);
-  const totalWater = water.reduce((sum, w) => sum + w.amountMl, 0);
+  // Sort by latest and filter by today
+  const sortedMeals = [...meals]
+    .filter(m => m.loggedAt.startsWith(todayStr))
+    .sort((a, b) => new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime());
+    
+  const sortedWater = [...water]
+    .filter(w => w.loggedAt.startsWith(todayStr))
+    .sort((a, b) => new Date(b.loggedAt).getTime() - new Date(a.loggedAt).getTime());
+
+  const totalCalories = sortedMeals.reduce((sum, m) => sum + m.calories, 0);
+  const totalWater = sortedWater.reduce((sum, w) => sum + w.amountMl, 0);
   
-  const totalProtein = meals.reduce((sum, m) => sum + m.protein, 0);
-  const totalCarbs = meals.reduce((sum, m) => sum + m.carbs, 0);
-  const totalFat = meals.reduce((sum, m) => sum + m.fat, 0);
+  const totalProtein = sortedMeals.reduce((sum, m) => sum + m.protein, 0);
+  const totalCarbs = sortedMeals.reduce((sum, m) => sum + m.carbs, 0);
+  const totalFat = sortedMeals.reduce((sum, m) => sum + m.fat, 0);
 
   useEffect(() => {
     if (!currentFast) return;
@@ -92,8 +102,48 @@ export default function DiaryPage() {
       <PageContent
         className="p-6 min-h-full pb-32"
         ptr
-        onPtrRefresh={(done) => {
-          setTimeout(done, 1000); 
+        ptrPreloader
+        onPtrRefresh={async (done) => {
+          const supabase = createClient();
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) { done(); return; }
+          try {
+            const todayData = await getTodayLogs(user.id);
+            hydrateFromSupabase({
+              meals: todayData.meals.map(m => ({
+                id: m.id,
+                name: m.name,
+                calories: m.calories,
+                protein: m.protein,
+                carbs: m.carbs,
+                fat: m.fat,
+                loggedAt: m.logged_at,
+                isAiGenerated: m.is_ai_generated || false,
+                type: m.type as any,
+              })),
+              water: todayData.water.map(w => ({
+                id: w.id,
+                amountMl: w.amount_ml,
+                loggedAt: w.logged_at,
+              })),
+              activities: todayData.activities.map(a => ({
+                id: a.id,
+                type: a.type as any,
+                durationSeconds: a.duration_seconds,
+                distanceMeters: a.distance_meters,
+                caloriesBurned: a.calories_burned,
+                startedAt: a.started_at,
+                endedAt: a.ended_at || undefined,
+                status: a.status as 'active' | 'paused' | 'completed',
+                path: a.path,
+                averagePace: a.average_pace || undefined,
+              })),
+            });
+          } catch (e) {
+            console.error('Error refreshing data:', e);
+          } finally {
+            done();
+          }
         }}
       >
       <div className="flex justify-between items-center mb-2 pt-4">
@@ -218,7 +268,7 @@ export default function DiaryPage() {
               onSwipeoutDeleted={() => deleteMeal(meal.id)}
             >
               <div slot="media" className="w-12 h-12 bg-gray-50 rounded-2xl flex items-center justify-center relative overflow-hidden">
-                <img src={`https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&q=80`} alt="Food" className="object-cover w-full h-full" referrerPolicy="no-referrer" />
+                <Image src="https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=100&q=80" alt="Food" fill className="object-cover" referrerPolicy="no-referrer" />
               </div>
               <div slot="title" className="font-bold text-gray-900 text-base">{meal.name}</div>
               <div slot="text" className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">
