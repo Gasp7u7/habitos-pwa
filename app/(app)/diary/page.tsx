@@ -86,7 +86,7 @@ export default function DiaryPage() {
 
   const handleToggleFast = () => {
     if (currentFast) {
-      endFast('completed'); // simple abstraction for now
+      endFast('early');
     } else {
       let target = 16;
       if (profile.fastingSchedule === '12:12') target = 12;
@@ -109,36 +109,28 @@ export default function DiaryPage() {
           if (!user) { done(); return; }
           try {
             const todayData = await getTodayLogs(user.id);
-            hydrateFromSupabase({
-              meals: todayData.meals.map(m => ({
-                id: m.id,
-                name: m.name,
-                calories: m.calories,
-                protein: m.protein,
-                carbs: m.carbs,
-                fat: m.fat,
-                loggedAt: m.logged_at,
-                isAiGenerated: m.is_ai_generated || false,
-                type: m.type as any,
-              })),
-              water: todayData.water.map(w => ({
-                id: w.id,
-                amountMl: w.amount_ml,
-                loggedAt: w.logged_at,
-              })),
-              activities: todayData.activities.map(a => ({
-                id: a.id,
-                type: a.type as any,
-                durationSeconds: a.duration_seconds,
-                distanceMeters: a.distance_meters,
-                caloriesBurned: a.calories_burned,
-                startedAt: a.started_at,
-                endedAt: a.ended_at || undefined,
-                status: a.status as 'active' | 'paused' | 'completed',
-                path: a.path,
-                averagePace: a.average_pace || undefined,
-              })),
-            });
+
+            const mappedWater = (todayData.water || []).map(w => ({
+              id: w.id,
+              userId: w.user_id,
+              amountMl: w.amount_ml,
+              loggedAt: w.logged_at || new Date().toISOString()
+            }));
+
+            const mappedMeals = (todayData.meals || []).map(m => ({
+              id: m.id,
+              userId: m.user_id,
+              name: m.name,
+              description: m.description || undefined,
+              calories: m.calories,
+              protein: m.protein_g || 0,
+              carbs: m.carbs_g || 0,
+              fat: m.fat_g || 0,
+              loggedAt: m.logged_at || new Date().toISOString(),
+              isAiGenerated: !!m.is_ai_generated
+            }));
+
+            hydrateFromSupabase(mappedWater, mappedMeals, null, []);
           } catch (e) {
             console.error('Error refreshing data:', e);
           } finally {

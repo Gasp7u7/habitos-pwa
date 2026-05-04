@@ -11,6 +11,7 @@ import { GpsPoint } from '@/lib/gps/types';
 import { isValidGpsPoint, haversineDistanceMeters } from '@/lib/gps/tracker';
 
 import dynamic from 'next/dynamic';
+import { f7 } from 'framework7-react';
 
 const RouteMap = dynamic(() => import('@/components/gps/RouteMap'), { ssr: false, loading: () => (
   <div className="w-full h-full bg-gray-200 flex items-center justify-center">
@@ -307,7 +308,7 @@ function ActivityContent() {
           <button 
             onClick={() => {
               discardActivity();
-              router.push('/workouts');
+              router.push('/workout');
             }}
             className="flex-1 py-4 font-bold text-red-600 bg-red-50 rounded-2xl active:scale-95 transition-transform"
           >
@@ -316,8 +317,23 @@ function ActivityContent() {
           <button 
             onClick={async () => {
               endActivity(effort, 'normal', notes);
-              createActivityLog({ ...currentActivity, perceivedEffort: effort as any, notes, status: 'completed' }).catch(console.error);
-              router.push('/workouts');
+              
+              await new Promise(resolve => setTimeout(resolve, 50));
+              
+              const finished = useAppStore.getState().activities.slice(-1)[0];
+              if (finished && finished.status === 'completed') {
+                createActivityLog(finished).catch(console.error);
+                
+                f7.toast.create({
+                  text: finished.type !== 'gym'
+                    ? `${(finished.distanceMeters / 1000).toFixed(2)} km guardados`
+                    : `Entreno de ${Math.floor(finished.durationSeconds / 60)} min guardado`,
+                  position: 'top',
+                  closeTimeout: 3000,
+                }).open();
+              }
+              
+              router.push('/workout');
             }}
             className="flex-[2] py-4 font-bold text-white bg-gray-900 rounded-2xl shadow-lg active:scale-95 transition-transform"
           >

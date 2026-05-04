@@ -53,11 +53,12 @@ export default function WeightModal({ isOpen, onClose }: WeightModalProps) {
       onSheetClosed={onClose}
       swipeToClose
       backdrop
-      style={{ height: 'auto', borderRadius: '32px 32px 0 0' }}
+      style={{ height: 'auto', borderRadius: '28px 28px 0 0' }}
     >
       <PageContent>
         <Block>
-            <div className="flex justify-between items-center mb-6 pt-2">
+          <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5 mt-1" />
+          <div className="flex justify-between items-center mb-6 pt-2">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-indigo-50 flex items-center justify-center">
                   <Scale size={20} className="text-indigo-600" />

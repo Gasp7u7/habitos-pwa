@@ -8,6 +8,9 @@ import dynamic from 'next/dynamic';
 import { Page, PageContent, List, ListItem, SwipeoutActions, SwipeoutButton, f7 } from 'framework7-react';
 import { useRouter } from 'next/navigation';
 
+import { getRecentActivities } from '@/lib/supabase/logs';
+import { createClient } from '@/lib/supabase/client';
+
 const RouteMap = dynamic(() => import('@/components/gps/RouteMap'), { ssr: false, loading: () => (
   <div className="w-full h-full bg-gray-200 flex items-center justify-center">
     <span className="text-gray-400 font-medium text-sm">Cargando mapa...</span>
@@ -21,7 +24,9 @@ export default function WorkoutPage() {
   const [gpsReady, setGpsReady] = useState(false);
 
   // Stats calculation
-  const thisWeekActivities = activities.filter(a => isThisWeek(new Date(a.startedAt)));
+  const completedActivities = activities.filter(a => a.status === 'completed');
+  const thisWeekActivities = completedActivities.filter(a => isThisWeek(new Date(a.startedAt)));
+  const thisWeekCount = thisWeekActivities.length;
   const weeklyDistance = thisWeekActivities.reduce((sum, a) => sum + (a.distanceMeters || 0), 0) / 1000;
   const weeklyDuration = thisWeekActivities.reduce((sum, a) => sum + (a.durationSeconds || 0), 0);
 
@@ -99,7 +104,49 @@ export default function WorkoutPage() {
 
   return (
     <Page className="bg-[#f8f9fa]">
-      <PageContent className="p-6 min-h-full pb-32">
+      <PageContent 
+        className="p-6 min-h-full pb-32"
+        ptr
+        ptrPreloader
+        onPtrRefresh={async (done) => {
+          try {
+            const supabase = createClient();
+            const { data: { user } } = await supabase.auth.getUser();
+            if (!user) { done(); return; }
+
+            const { data } = await getRecentActivities(user.id, 30);
+            if (data && data.length > 0) {
+              const mapped = data.map(a => ({
+                id: a.id,
+                userId: a.user_id,
+                type: a.type as any,
+                source: (a.source || 'manual') as any,
+                status: (a.status || 'completed') as any,
+                startedAt: a.started_at,
+                endedAt: a.ended_at || a.started_at,
+                durationSeconds: a.duration_seconds || 0,
+                movingTimeSeconds: a.duration_seconds || 0,
+                distanceMeters: a.distance_meters || 0,
+                avgPaceSecondsPerKm: a.avg_pace_seconds_per_km || 0,
+                avgSpeedKmh: a.avg_speed_kmh || 0,
+                estimatedCalories: a.estimated_calories || 0,
+                elevationGainMeters: (a as any).elevation_gain_meters || 0,
+                perceivedEffort: a.perceived_effort as any,
+                mood: a.mood as any,
+                notes: a.notes || undefined,
+                route: (a as any).gps_routes?.[0]?.route_geojson?.coordinates?.map(
+                  (c: number[]) => ({ longitude: c[0], latitude: c[1] })
+                ) || [],
+                createdAt: a.created_at || a.started_at,
+                updatedAt: a.updated_at || a.started_at,
+              }));
+
+              useAppStore.setState({ activities: mapped });
+            }
+          } catch { /* silencioso */ }
+          finally { done(); }
+        }}
+      >
         <h1 className="text-2xl font-bold text-gray-900 mb-6 pt-4 tracking-tight">Entreno</h1>
 
         {/* Sub-tab selector (pills horizontales) */}
@@ -164,7 +211,7 @@ export default function WorkoutPage() {
           <div className="grid grid-cols-3 gap-2">
             <div>
               <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Sesiones</div>
-              <div className="font-bold text-lg text-gray-900 tabular-nums">{thisWeekActivities.length}</div>
+              <div className="font-bold text-lg text-gray-900 tabular-nums">{thisWeekCount}</div>
             </div>
             <div>
               <div className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Tiempo</div>
@@ -179,11 +226,21 @@ export default function WorkoutPage() {
 
         {/* Historial */}
         <h2 className="text-lg font-bold text-gray-900 mb-4 px-1">Historial</h2>
-        {activities.length === 0 ? (
-          <p className="text-sm text-gray-400 text-center py-6 bg-white rounded-3xl border border-dashed border-gray-200">No hay entrenamientos guardados.</p>
+        {completedActivities.length === 0 ? (
+          <div className="bg-white rounded-[32px] border border-dashed border-gray-200 p-8 text-center">
+            <i className="f7-icons text-4xl text-gray-200 block mb-3">figure.run</i>
+            <p className="font-bold text-gray-500 mb-1">Sin actividades todavía</p>
+            <p className="text-sm text-gray-400 mb-4">Completa tu primera sesión para verla aquí</p>
+            <button
+              onClick={handleStartActivity}
+              className="bg-[#D4F87A] text-[#1a2e00] font-bold px-6 py-2.5 rounded-full text-sm active:scale-95 transition-transform"
+            >
+              Iniciar ahora
+            </button>
+          </div>
         ) : (
           <List mediaList className="mb-8">
-            {activities.slice().reverse().map(activity => {
+            {completedActivities.slice().reverse().map(activity => {
               const isGpsActivity = ['walk', 'run', 'cycling'].includes(activity.type);
               
               return (

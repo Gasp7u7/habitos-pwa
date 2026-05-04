@@ -59,11 +59,12 @@ export default function AiMealModal({ isOpen, onClose }: AiMealModalProps) {
       onSheetClosed={onClose}
       swipeToClose
       backdrop
-      style={{ height: '80vh', borderRadius: '32px 32px 0 0' }}
+      style={{ height: '75vh', borderRadius: '28px 28px 0 0' }}
     >
       <PageContent>
         <Block>
-            <div className="flex justify-between items-center mb-6 pt-2">
+          <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5 mt-1" />
+          <div className="flex justify-between items-center mb-6 pt-2">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center">
                   <Sparkles size={20} className="text-orange-500 box-content p-1" />
