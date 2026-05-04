@@ -2,7 +2,7 @@
 import { ReactNode, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Home, Activity, BookHeart, BarChart3, User, Plus, Droplet, Utensils, AlignLeft, PersonStanding, Flame, Scale, Dumbbell, Bike, Map as MapIcon } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from '@/lib/utils';
 import { useAppStore } from '@/lib/store';
@@ -15,12 +15,8 @@ import { createClient } from '@/lib/supabase/client';
 import { getProfile } from '@/lib/supabase/profile';
 import { getTodayLogs, getRecentActivities } from '@/lib/supabase/logs';
 
+import '@/lib/setup-f7';
 import { Sheet, PageContent, Block } from 'framework7-react';
-import Framework7 from 'framework7/lite-bundle';
-import Framework7React from 'framework7-react';
-
-// eslint-disable-next-line react-hooks/rules-of-hooks
-Framework7.use(Framework7React);
 
 export default function MobileLayout({ children }: { children: ReactNode }) {
   const [isFabOpen, setIsFabOpen] = useState(false);
@@ -45,6 +41,9 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
         ]);
 
         if (profileData) {
+          const weightKg = profileData.weight_kg || 70;
+          const waterGoal = Math.round(weightKg * 35);
+
           updateProfile({
             id: user.id,
             name: profileData.display_name,
@@ -56,7 +55,7 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
             fastingSchedule: profileData.fasting_schedule || undefined,
             hasCompletedOnboarding: profileData.has_completed_onboarding || false,
             dailyGoals: {
-              waterMl: profileData.daily_water_ml || 2500,
+              waterMl: waterGoal,
               calories: profileData.daily_calories || 2200,
               activityMinutes: profileData.daily_activity_minutes || 45,
             },
@@ -167,6 +166,7 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
                 <FabAction 
                   icon="drop.fill" 
                   label="+ 1 vaso agua" 
+                  sublabel="Hidratación"
                   color="bg-blue-50 text-blue-600" 
                   onClick={() => { 
                     useAppStore.getState().addWater(); 
@@ -176,6 +176,7 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
                 <FabAction 
                   icon="sparkles" 
                   label="Comida con IA" 
+                  sublabel="Describe y listo"
                   color="bg-orange-50 text-orange-600" 
                   onClick={() => { 
                     setIsFabOpen(false); 
@@ -184,7 +185,8 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
                 />
                 <FabAction 
                   icon="scalemass.fill" 
-                  label="Registrar peso" 
+                  label="Mi peso" 
+                  sublabel="Registro diario"
                   color="bg-indigo-50 text-indigo-600" 
                   onClick={() => { 
                     setIsFabOpen(false); 
@@ -194,6 +196,7 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
                 <FabAction 
                   icon="pencil.and.list.clipboard" 
                   label="Comida manual" 
+                  sublabel="Con macros"
                   color="bg-green-50 text-green-600" 
                   onClick={() => { 
                     setIsFabOpen(false); 
@@ -218,11 +221,11 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
             <button
               onClick={() => setIsFabOpen(!isFabOpen)}
               className={cn(
-                "absolute -top-10 w-16 h-16 rounded-full bg-gray-900 shadow-lg flex items-center justify-center active:scale-95 transition-transform flex-shrink-0 z-50",
-                isFabOpen && "rotate-45"
+                "absolute -top-10 w-16 h-16 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-all flex-shrink-0 z-50",
+                isFabOpen ? "bg-gray-900 rotate-45" : "bg-[#D4F87A] shadow-[#D4F87A]/40"
               )}
             >
-              <Plus size={28} strokeWidth={2.5} className="text-white" />
+              <Plus size={28} strokeWidth={2.5} className={isFabOpen ? "text-white" : "text-gray-900"} />
             </button>
           </div>
 
@@ -251,13 +254,14 @@ function TabItem({ href, icon, label, className }: { href: string; icon: ReactNo
   );
 }
 
-function FabAction({ icon, label, color, onClick }: { icon: string, label: string, color: string, onClick: () => void }) {
+function FabAction({ icon, label, sublabel, color, onClick }: { icon: string, label: string, sublabel: string, color: string, onClick: () => void }) {
   return (
-    <button onClick={onClick} className={cn("flex items-center gap-4 rounded-2xl p-4 transition-transform active:scale-95 group", color)}>
-      <div className="w-8 h-8 flex items-center justify-center">
-        <i className="f7-icons text-2xl">{icon}</i>
+    <button onClick={onClick} className={cn("flex flex-col items-start gap-2 rounded-2xl p-4 transition-transform active:scale-95 group", color)}>
+      <i className="f7-icons text-2xl mb-1">{icon}</i>
+      <div className="text-left w-full">
+        <div className="text-sm font-bold leading-tight line-clamp-1">{label}</div>
+        <div className="text-xs opacity-70 leading-tight mt-1 line-clamp-1">{sublabel}</div>
       </div>
-      <span className="text-sm font-bold">{label}</span>
     </button>
   );
 }

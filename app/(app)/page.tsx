@@ -4,9 +4,9 @@ import { useAppStore } from '@/lib/store';
 import { Activity, ArrowRight, Clock } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { format, isSameDay } from 'date-fns';
+import { format, isSameDay, differenceInHours, differenceInMinutes, subDays } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { useState } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { Swiper, SwiperSlide } from 'swiper/react';
 import 'swiper/css';
 
@@ -29,20 +29,49 @@ export default function HomePage() {
   const calPct = Math.min(100, (caloriesEaten / profile.dailyGoals.calories) * 100);
   const gymDone = todayActivities.length > 0;
 
+  const [fastingElapsed, setFastingElapsed] = useState<{ h: number, m: number, pct: number } | null>(null);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    const calculateFast = () => {
+      if (!currentFast) {
+        setFastingElapsed(null);
+        return;
+      }
+      const start = new Date(currentFast.startedAt);
+      const now = new Date();
+      const h = differenceInHours(now, start);
+      const m = differenceInMinutes(now, start) % 60;
+      const pct = Math.min(100, (differenceInMinutes(now, start) / (currentFast.targetHours * 60)) * 100);
+      setFastingElapsed({ h, m, pct });
+    };
+
+    calculateFast();
+    interval = setInterval(calculateFast, 60000);
+    return () => clearInterval(interval);
+  }, [currentFast]);
+
+  const greeting = useMemo(() => {
+    const h = new Date().getHours();
+    if (h < 12) return 'Buenos días';
+    if (h < 19) return 'Buenas tardes';
+    return 'Buenas noches';
+  }, []);
+
   const getHeroMessage = () => {
-    if (gymDone && waterPct >= 80 && calPct >= 70) return { text: "Día completo.", accent: "¡Excelente!" };
-    if (!gymDone && waterPct < 50) return { text: "Te falta", accent: "agua y ejercicio." };
+    if (gymDone && waterPct >= 80 && calPct >= 60) return { text: "Día completo.", accent: "¡Excelente!" };
+    if (!gymDone && waterPct < 40) return { text: "Te falta", accent: "agua y ejercicio." };
+    if (!gymDone && waterPct >= 80) return { text: "Hidratado,", accent: "ahora a moverse." };
     if (!gymDone) return { text: "Sin actividad", accent: "hoy aún." };
-    if (waterPct < 50) return { text: "Vas bien,", accent: "toma más agua." };
+    if (gymDone && waterPct < 40) return { text: "Entreno listo,", accent: "toma más agua." };
     return { text: "Vas", accent: "bien." };
   };
 
   const heroMsg = getHeroMessage();
 
   const days = Array.from({ length: 14 }, (_, i) => {
-    const d = new Date();
-    d.setDate(d.getDate() - (13 - i));
-    return d;
+    return subDays(new Date(), 13 - i);
   });
 
   const hasActivityOnDay = (d: Date) => {
@@ -60,7 +89,7 @@ export default function HomePage() {
             <Image src={`https://api.dicebear.com/7.x/notionists/svg?seed=${profile.name}`} alt="Avatar" width={48} height={48} />
           </div>
           <div>
-            <p className="text-gray-500 font-medium text-xs">Buenos días,</p>
+            <p className="text-gray-500 font-medium text-xs">{greeting},</p>
             <h1 className="text-lg font-bold text-gray-900 tracking-tight">{profile.name}</h1>
           </div>
         </div>
@@ -72,9 +101,9 @@ export default function HomePage() {
           <h2 className="text-2xl font-bold text-white leading-tight mb-1">{heroMsg.text} <br/><span className="text-[#D4F87A]">{heroMsg.accent}</span></h2>
         </div>
         <div className="relative w-[80px] h-[80px] flex-shrink-0">
-          <ProgressRing radius={40} stroke={6} progress={waterPct} size={80} color="#D4F87A" />
+          <ProgressRing radius={40} stroke={6} progress={waterPct} size={80} color="#3B8BF5" />
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <ProgressRing radius={32} stroke={6} progress={calPct} size={80} color="#FFA07A" />
+            <ProgressRing radius={32} stroke={6} progress={calPct} size={80} color="#D4F87A" />
           </div>
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <ProgressRing radius={24} stroke={6} progress={gymDone ? 100 : 0} size={80} color="#A78BFA" />
@@ -87,30 +116,45 @@ export default function HomePage() {
         <div className="bg-[#D4F87A] rounded-[24px] p-5 shadow-none flex flex-col justify-between">
           <div className="text-[10px] uppercase tracking-widest font-bold text-[#1a2e00]/60 mb-2">CALORÍAS</div>
           <span className="text-3xl font-bold text-[#1a2e00] leading-none mb-1">{caloriesEaten}</span>
+          <div className="w-full bg-[#1a2e00]/10 rounded-full h-1 mt-2 mb-1">
+            <div className="bg-[#1a2e00] h-1 rounded-full" style={{ width: `${calPct}%` }}></div>
+          </div>
           <span className="text-xs font-semibold text-[#1a2e00]/60">/ {profile.dailyGoals.calories} kcal</span>
         </div>
         
         <div className="bg-white rounded-[24px] p-5 shadow-none border border-gray-100 flex flex-col justify-between">
           <div className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">AGUA</div>
           <span className="text-3xl font-bold text-gray-900 leading-none mb-1">{(waterTotalMl/1000).toFixed(1)}</span>
+          <div className="w-full bg-gray-100 rounded-full h-1 mt-2 mb-1">
+            <div className="bg-[#3B8BF5] h-1 rounded-full" style={{ width: `${waterPct}%` }}></div>
+          </div>
           <span className="text-xs font-semibold text-gray-400">/ {(waterGoalMl/1000).toFixed(1)} L</span>
         </div>
         
         <div className="bg-gray-900 rounded-[24px] p-5 shadow-none flex flex-col justify-between">
           <div className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">AYUNO</div>
-          <span className="text-3xl font-bold text-white leading-none mb-1">{currentFast?.targetHours || 0}h</span>
-          <span className="text-xs font-semibold text-gray-400">{currentFast ? 'Activo' : 'Inactivo'}</span>
+          {fastingElapsed ? (
+            <>
+              <span className="text-3xl font-bold text-white leading-none mb-1">{fastingElapsed.h}h {fastingElapsed.m}m</span>
+              <span className="text-xs font-semibold text-gray-400">Activo ({currentFast?.targetHours}h)</span>
+            </>
+          ) : (
+            <>
+              <span className="text-xl font-bold text-white leading-none mb-1 mt-2">Inactivo</span>
+              <Link href="/diary" className="text-xs font-bold text-[#D4F87A] uppercase tracking-widest mt-auto">Iniciar ayuno</Link>
+            </>
+          )}
         </div>
 
         <div className="bg-white rounded-[24px] p-5 shadow-none border border-gray-100 flex flex-col justify-between">
           <div className="text-[10px] uppercase tracking-widest font-bold text-gray-400 mb-2">PESO</div>
           <span className="text-3xl font-bold text-gray-900 leading-none mb-1">{profile.weightKg || '--'}</span>
-          <span className="text-xs font-semibold text-gray-400">kg</span>
+          <span className="text-xs font-semibold text-gray-400">último registrado</span>
         </div>
       </div>
 
-      {/* Swiper 7 days */}
-      <Swiper slidesPerView={7} centeredSlides={false} className="mb-8" initialSlide={7}>
+      {/* Swiper 14 days */}
+      <Swiper slidesPerView={7} centeredSlides={false} className="mb-8" initialSlide={13}>
         {days.map((d, i) => (
           <SwiperSlide key={i} onClick={() => setSelectedDate(d)}>
             <div className={`flex flex-col items-center gap-2 py-2 transition-opacity ${isToday(d) ? 'opacity-100' : 'opacity-50'}`}>
@@ -128,32 +172,15 @@ export default function HomePage() {
 
       {/* Mini feed del grupo */}
       {profile.groupCode && (
-        <div className="mb-8">
-          <div className="flex justify-between items-center mb-4 px-1">
-            <h2 className="text-lg font-bold text-gray-900">Tu Grupo ({profile.groupCode})</h2>
-            <Link href="/profile" className="text-xs font-bold text-gray-400 uppercase tracking-widest">Invitar</Link>
+        <div className="mb-8 p-6 rounded-[24px] border-2 border-dashed border-gray-200 text-center">
+          <div className="w-12 h-12 bg-gray-100 text-gray-400 rounded-full flex items-center justify-center mx-auto mb-3">
+            <Activity size={24} />
           </div>
-          <div className="space-y-3">
-            <div className="bg-white rounded-[24px] p-4 border border-gray-100 shadow-sm flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0 relative">
-                <Image src={`https://api.dicebear.com/7.x/notionists/svg?seed=Carlos`} alt="Friend" fill referrerPolicy="no-referrer" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-gray-900">Carlos <span className="font-medium text-gray-500">completó una caminata de 2.5km</span></p>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Hace 2 horas</p>
-              </div>
-            </div>
-             
-            <div className="bg-white rounded-[24px] p-4 border border-gray-100 shadow-sm flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-gray-50 flex items-center justify-center overflow-hidden flex-shrink-0 relative">
-                <Image src={`https://api.dicebear.com/7.x/notionists/svg?seed=Ana`} alt="Ana" fill referrerPolicy="no-referrer" />
-              </div>
-              <div>
-                <p className="text-sm font-bold text-gray-900">Ana <span className="font-medium text-gray-500">completó un ayuno de 16h</span></p>
-                <p className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mt-1">Hace 5 horas</p>
-              </div>
-            </div>
-          </div>
+          <h3 className="text-sm font-bold text-gray-900 mb-1">El grupo hoy</h3>
+          <p className="text-xs text-gray-500 mb-4 px-4">Invita a tus amigos con el código <strong>{profile.groupCode}</strong></p>
+          <Link href="/profile" className="inline-block bg-gray-900 text-white text-xs font-bold px-4 py-2 rounded-full uppercase tracking-widest">
+            Invitar
+          </Link>
         </div>
       )}
 
@@ -164,16 +191,16 @@ export default function HomePage() {
       </div>
       
       <div className="space-y-3 mb-8">
-        {activities.slice().reverse().slice(0, 3).map(a => (
+        {activities.filter(a => a.status === 'completed').slice().reverse().slice(0, 3).map(a => (
           <div key={a.id} className="bg-white rounded-[24px] p-4 border border-gray-100 shadow-sm flex items-center justify-between">
             <div className="flex items-center gap-4">
               <div className="w-12 h-12 rounded-full bg-gray-50 flex items-center justify-center">
-                <i className={cn("f7-icons text-xl", a.type === 'walk' ? 'text-blue-500' : a.type === 'run' ? 'text-orange-500' : 'text-purple-500')}>
-                  {a.type === 'walk' ? 'figure.walk' : a.type === 'run' ? 'figure.run' : 'dumbbell.fill'}
+                <i className={cn("f7-icons text-xl", a.type === 'walk' ? 'text-blue-500' : a.type === 'run' ? 'text-orange-500' : a.type === 'cycling' ? 'text-green-500' : 'text-purple-500')}>
+                  {a.type === 'walk' ? 'figure.walk' : a.type === 'run' ? 'figure.run' : a.type === 'cycling' ? 'bicycle' : 'dumbbell.fill'}
                 </i>
               </div>
               <div>
-                <h4 className="font-bold text-gray-900 text-base">{a.type === 'walk' ? 'Caminata' : a.type === 'run' ? 'Running' : 'Gym'}</h4>
+                <h4 className="font-bold text-gray-900 text-base">{a.type === 'walk' ? 'Caminata' : a.type === 'run' ? 'Running' : a.type === 'cycling' ? 'Ciclismo' : 'Gym'}</h4>
                 <div className="text-[10px] font-bold uppercase tracking-wider text-gray-400 mt-1">
                   {format(new Date(a.startedAt), "d MMM 'a las' HH:mm", { locale: es })}
                 </div>
@@ -194,8 +221,17 @@ export default function HomePage() {
             </div>
           </div>
         ))}
-        {activities.length === 0 && (
-          <p className="text-sm text-gray-400 text-center py-6 bg-white border border-gray-100 rounded-[24px]">No hay actividades recientes.</p>
+        {activities.filter(a => a.status === 'completed').length === 0 && (
+          <div className="bg-white border border-gray-100 rounded-[24px] p-6 text-center shadow-sm">
+            <div className="w-16 h-16 bg-gray-50 rounded-full mx-auto flex flex-col items-center justify-center mb-3 text-gray-300">
+              <i className="f7-icons text-3xl">figure.run</i>
+            </div>
+            <h3 className="text-sm font-bold text-gray-900 mb-1">Sin actividades</h3>
+            <p className="text-xs text-gray-500 mb-4 px-2">Aún no has registrado ningún entrenamiento esta semana.</p>
+            <Link href="/workout" className="inline-block bg-[#D4F87A] text-[#1a2e00] font-bold text-xs uppercase tracking-widest px-4 py-2 rounded-full">
+              Iniciar entreno
+            </Link>
+          </div>
         )}
       </div>
     </div>
