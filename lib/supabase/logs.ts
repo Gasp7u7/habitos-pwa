@@ -11,7 +11,6 @@ export async function insertWaterLog(userId: string, amountMl: number) {
   return (supabase.from('water_logs') as any).insert({
     user_id: userId,
     amount_ml: amountMl,
-    logged_at: new Date().toISOString(),
   });
 }
 
@@ -31,7 +30,6 @@ export async function insertMealLog(userId: string, meal: any) {
     carbs_g: meal.carbs,
     fat_g: meal.fat,
     is_ai_generated: meal.isAiGenerated,
-    logged_at: new Date().toISOString(),
   });
 }
 
@@ -45,7 +43,6 @@ export async function insertFastingLog(userId: string, targetHours: number) {
   const supabase = createClient();
   return (supabase.from('fasting_logs') as any).insert({
     user_id: userId,
-    started_at: new Date().toISOString(),
     target_hours: targetHours,
     status: 'active',
   }).select().single();

@@ -5,3 +5,18 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Build outputs
+out/
+
+# Temporary / Build info
+*.tsbuildinfo
+
+# Test / Setup scripts
+test-db.js
+*.sql
+
+# PWA / Workbox generated files
+public/sw.js
+public/workbox-*.js
+public/swe-worker-*.js

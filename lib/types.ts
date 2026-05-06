@@ -99,6 +99,16 @@ export type ActivityEntry = {
   updatedAt: string;
 };
 
+export type Ingredient = {
+  name: string;
+  amount: number;
+  unit: string;
+  calories?: number;
+  protein?: number;
+  carbs?: number;
+  fat?: number;
+};
+
 export type MealEntry = {
   id: string;
   userId: string;
@@ -110,6 +120,8 @@ export type MealEntry = {
   fat: number;
   loggedAt: string;
   isAiGenerated: boolean;
+  mealType?: 'desayuno' | 'almuerzo' | 'cena' | 'snack';
+  ingredients?: Ingredient[];
 };
 
 export type WaterEntry = {
@@ -125,6 +137,8 @@ export type UserProfile = {
   email: string;
   heightCm?: number;
   weightKg?: number;
+  age?: number;
+  gender?: 'male' | 'female';
   primaryGoal?: string;
   goals: string[];
   areasForImprovement: string[];
@@ -137,6 +151,9 @@ export type UserProfile = {
     waterMl: number;
     calories: number;
     activityMinutes: number;
+    proteinG: number;
+    carbsG: number;
+    fatG: number;
   };
   glassSizeMl?: number;
 };

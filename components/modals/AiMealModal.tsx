@@ -1,9 +1,9 @@
 'use client';
 import { useState } from 'react';
-
+import { motion, AnimatePresence } from 'motion/react';
 import { useAppStore } from '@/lib/store';
 import { cn } from '@/lib/utils';
-import { Sheet, PageContent, Block } from 'framework7-react';
+import { Sparkles, Send, X } from 'lucide-react';
 
 interface AiMealModalProps {
   isOpen: boolean;
@@ -18,23 +18,16 @@ export default function AiMealModal({ isOpen, onClose }: AiMealModalProps) {
 
   const handleProcess = async () => {
     if (!query) return;
-    
     setIsLoading(true);
     setErrorDesc('');
-    
     try {
       const res = await fetch('/api/ai/meal-analysis', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: query, mealType: 'other' })
       });
-      
       const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.error || "API error");
-      }
-      
+      if (!res.ok) throw new Error(data.error || 'API error');
       addMeal({
         name: data.meal_name,
         calories: data.estimated_calories,
@@ -46,49 +39,53 @@ export default function AiMealModal({ isOpen, onClose }: AiMealModalProps) {
       setQuery('');
       onClose();
     } catch (e: any) {
-      console.error(e);
-      setErrorDesc("Hubo un error procesando tus macros. Revisa los detalles o intenta de nuevo.");
+      setErrorDesc('Hubo un error procesando tus macros. Intenta de nuevo.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <Sheet
-      opened={isOpen}
-      onSheetClosed={onClose}
-      swipeToClose
-      backdrop
-      style={{ height: '75vh', borderRadius: '28px 28px 0 0' }}
-    >
-      <PageContent>
-        <Block>
-          <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5 mt-1" />
-          <div className="flex justify-between items-center mb-6 pt-2">
+    <AnimatePresence>
+      {isOpen && (
+        <>
+          <motion.div
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            onClick={onClose}
+            className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]"
+          />
+          <motion.div
+            initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
+            transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+            className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white rounded-t-[32px] p-6 z-[70] shadow-2xl"
+          >
+            <div className="w-10 h-1 bg-gray-200 rounded-full mx-auto mb-5" />
+            <div className="flex justify-between items-center mb-6">
               <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-full bg-orange-50 flex items-center justify-center">
-                  <i className="f7-icons text-xl text-orange-500 box-content p-1">sparkles</i>
+                  <Sparkles size={20} className="text-orange-500" />
                 </div>
                 <div>
-                    <h2 className="text-xl font-bold text-gray-900">Coach Nutricional IA</h2>
+                  <h2 className="text-xl font-bold text-gray-900">Coach Nutricional IA</h2>
                 </div>
               </div>
+              <button onClick={onClose} className="!w-8 !h-8 !min-w-0 !p-0 !rounded-full !flex !items-center !justify-center !bg-gray-100 !text-gray-500 active:scale-90 transition-transform">
+                <X size={16} />
+              </button>
             </div>
 
             <div className="mb-6">
               <p className="text-sm font-medium text-gray-600 mb-4 leading-relaxed">
-                Describe lo que comiste o los ingredientes que tienes. La IA calculará tus macros automáticamente. (Dieta: <strong className="text-gray-900">{profile.dietType || 'omnivora'}</strong>)
+                Describe lo que comiste. La IA calculará tus macros. (Dieta: <strong className="text-gray-900">{profile.dietType || 'omnívora'}</strong>)
               </p>
-              
               <div className="relative">
-                <textarea 
+                <textarea
                   value={query}
                   onChange={(e) => setQuery(e.target.value)}
                   placeholder="Ej: Me comí dos huevos revueltos con una rebanada de pan..."
-                  className="w-full bg-gray-50 border border-gray-200 rounded-[24px] p-5 min-h-[140px] text-gray-900 font-medium placeholder:text-gray-400 focus:outline-none focus:border-orange-300 focus:bg-orange-50/30 transition-colors resize-none"
+                  className="w-full bg-gray-50 border border-gray-200 rounded-[24px] p-5 min-h-[140px] text-gray-900 font-medium placeholder:text-gray-400 focus:outline-none focus:ring-2 focus:ring-orange-300 focus:bg-orange-50/30 transition-colors resize-none"
                   disabled={isLoading}
                 />
-                
                 {isLoading && (
                   <div className="absolute inset-0 bg-white/80 backdrop-blur-sm rounded-[24px] flex flex-col items-center justify-center">
                     <div className="w-8 h-8 rounded-full border-2 border-orange-500 border-t-transparent animate-spin mb-2" />
@@ -96,7 +93,6 @@ export default function AiMealModal({ isOpen, onClose }: AiMealModalProps) {
                   </div>
                 )}
               </div>
-              
               {errorDesc && (
                 <div className="mt-3 text-red-500 text-sm font-medium p-3 bg-red-50 rounded-xl border border-red-100">
                   {errorDesc}
@@ -104,22 +100,18 @@ export default function AiMealModal({ isOpen, onClose }: AiMealModalProps) {
               )}
             </div>
 
-            <button 
-              onClick={handleProcess}
-              disabled={!query || isLoading}
+            <button onClick={handleProcess} disabled={!query || isLoading}
               className={cn(
-                "w-full rounded-[24px] py-4 font-bold text-lg flex items-center justify-center gap-2 transition-all pb-safe-bottom",
-                !query || isLoading 
-                  ? "bg-gray-200 text-gray-400" 
-                  : "bg-orange-500 text-white active:scale-95"
+                'w-full rounded-[24px] py-4 font-bold text-lg flex items-center justify-center gap-2 transition-all mb-4',
+                !query || isLoading ? 'bg-gray-200 text-gray-400' : 'bg-orange-500 text-white active:scale-95'
               )}
-              style={{ marginBottom: 'env(safe-area-inset-bottom, 20px)' }}
             >
-              <i className="f7-icons text-lg">paperplane_fill</i>
+              <Send size={18} />
               Procesar con IA
             </button>
-        </Block>
-      </PageContent>
-    </Sheet>
+          </motion.div>
+        </>
+      )}
+    </AnimatePresence>
   );
 }

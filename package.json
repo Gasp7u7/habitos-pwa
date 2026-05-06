@@ -10,6 +10,9 @@
     "clean": "next clean"
   },
   "dependencies": {
+    "@capacitor/cli": "^8.3.1",
+    "@capacitor/core": "^8.3.1",
+    "@capgo/capacitor-health": "^8.4.9",
     "@ducanh2912/next-pwa": "^10.2.9",
     "@google/genai": "^1.51.0",
     "@hookform/resolvers": "^5.2.1",

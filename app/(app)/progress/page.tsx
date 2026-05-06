@@ -6,7 +6,8 @@ import { createClient } from '@/lib/supabase/client';
 import { format } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
-import { Page, PageContent } from 'framework7-react';
+import { Scale, Flame } from 'lucide-react';
+
 
 interface WeightLog {
   id: string;
@@ -62,28 +63,8 @@ export default function ProgressPage() {
   }));
 
   return (
-    <Page>
-      <PageContent
-        ptr
-        ptrPreloader
-        onPtrRefresh={async (done) => {
-          try {
-            const supabase = createClient();
-            const { data: { user } } = await supabase.auth.getUser();
-            if (!user) { done(); return; }
-            const { data } = await supabase
-              .from('weight_logs')
-              .select('*')
-              .eq('user_id', user.id)
-              .order('logged_at', { ascending: true })
-              .limit(30);
-            if (data) setWeightHistory(data);
-          } catch { /* silencioso */ }
-          finally { done(); }
-        }}
-        className="p-6 bg-[#f8f9fa] min-h-full pb-32"
-      >
-        <h1 className="text-2xl font-bold text-gray-900 mb-6 pt-4 tracking-tight">Estadísticas</h1>
+    <div className="p-6 bg-[#f8f9fa] min-h-full pb-32 overflow-y-auto">
+      <h1 className="text-2xl font-bold text-gray-900 mb-6 pt-4 tracking-tight">Estadísticas</h1>
       
       {/* Custom Tabs */}
       <div className="flex bg-gray-100 p-1 rounded-full mb-6 relative">
@@ -119,7 +100,7 @@ export default function ProgressPage() {
                 )}
               </div>
               <div className="w-10 h-10 bg-indigo-50 rounded-full flex items-center justify-center">
-                <i className="f7-icons text-lg text-indigo-600">scalemass_fill</i>
+                <Scale size={20} className="text-indigo-600" />
               </div>
             </div>
             
@@ -174,7 +155,7 @@ export default function ProgressPage() {
               <p className="text-3xl font-bold tracking-tight text-[#D4F87A]">
                 {calculateStreak(completedActivities)} días
               </p>
-              <i className="f7-icons text-2xl text-orange-400">flame_fill</i>
+              <Flame size={28} className="text-orange-400" />
             </div>
             <p className="text-xs font-semibold text-gray-500 mt-2">
               {(() => {
@@ -293,7 +274,6 @@ export default function ProgressPage() {
           </div>
         </div>
       )}
-      </PageContent>
-    </Page>
+    </div>
   );
 }

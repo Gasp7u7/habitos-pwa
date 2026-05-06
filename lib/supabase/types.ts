@@ -17,6 +17,12 @@ export type Database = {
           daily_activity_minutes: number | null
           glass_size_ml: number | null
           has_completed_onboarding: boolean | null
+          target_protein_g: number | null
+          target_carbs_g: number | null
+          target_fat_g: number | null
+          age: number | null
+          gender: string | null
+          goals: string[] | null
           created_at: string | null
           updated_at: string | null
         }
@@ -35,6 +41,12 @@ export type Database = {
           daily_activity_minutes?: number | null
           glass_size_ml?: number | null
           has_completed_onboarding?: boolean | null
+          target_protein_g?: number | null
+          target_carbs_g?: number | null
+          target_fat_g?: number | null
+          age?: number | null
+          gender?: string | null
+          goals?: string[] | null
           created_at?: string | null
           updated_at?: string | null
         }
@@ -53,6 +65,12 @@ export type Database = {
           daily_activity_minutes?: number | null
           glass_size_ml?: number | null
           has_completed_onboarding?: boolean | null
+          target_protein_g?: number | null
+          target_carbs_g?: number | null
+          target_fat_g?: number | null
+          age?: number | null
+          gender?: string | null
+          goals?: string[] | null
           created_at?: string | null
           updated_at?: string | null
         }

@@ -9,14 +9,15 @@ import OnboardingFlow from '../onboarding/OnboardingFlow';
 import AddMealModal from '../modals/AddMealModal';
 import AiMealModal from '../modals/AiMealModal';
 import WeightModal from '../modals/WeightModal';
+import { Home, Dumbbell, Utensils, User, Plus, Droplets, Sparkles, Scale, ClipboardList, Play } from 'lucide-react';
+
 
 import { createClient } from '@/lib/supabase/client';
 import { getProfile } from '@/lib/supabase/profile';
 import { getTodayLogs, getRecentActivities } from '@/lib/supabase/logs';
 import { notifyWaterReminder } from '@/lib/notifications/inapp';
 
-import '@/lib/setup-f7';
-import { Sheet, PageContent, Block } from 'framework7-react';
+// Framework7 is no longer used here
 
 export default function MobileLayout({ children }: { children: ReactNode }) {
   const [isFabOpen, setIsFabOpen] = useState(false);
@@ -28,10 +29,21 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
   const router = useRouter();
 
   useEffect(() => {
+    setMounted(true);
+
     const loadData = async () => {
+      const state = useAppStore.getState();
+      const now = Date.now();
+      const FIVE_MINUTES = 5 * 60 * 1000;
+
+      // Skip sync if we have data and it's fresh
+      if (state.lastSync && (now - state.lastSync < FIVE_MINUTES)) {
+        return;
+      }
+
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setMounted(true); return; }
+      if (!user) return;
       
       try {
         const [profileData, todayData, recentActivitiesData] = await Promise.all([
@@ -50,21 +62,37 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
             email: profileData.email,
             heightCm: profileData.height_cm || undefined,
             weightKg: profileData.weight_kg || undefined,
+            age: profileData.age || undefined,
+            gender: (profileData.gender as "male" | "female") || undefined,
             primaryGoal: profileData.primary_goal || undefined,
+            goals: profileData.goals || [],
             dietType: profileData.diet_type || undefined,
             fastingSchedule: profileData.fasting_schedule || undefined,
             hasCompletedOnboarding: profileData.has_completed_onboarding || false,
             dailyGoals: {
-              waterMl: waterGoal,
+              waterMl: profileData.daily_water_ml || waterGoal,
               calories: profileData.daily_calories || 2200,
               activityMinutes: profileData.daily_activity_minutes || 45,
+              proteinG: profileData.target_protein_g || 0,
+              carbsG: profileData.target_carbs_g || 0,
+              fatG: profileData.target_fat_g || 0,
             },
             glassSizeMl: profileData.glass_size_ml || 250,
           });
+        } else {
+          // Si no hay perfil, al menos aseguramos el ID correcto para las peticiones
+          updateProfile({ id: user.id, email: user.email ?? undefined });
+          
+          // Intentamos crear el perfil básico si no existe (fallback al trigger)
+          await (supabase.from('profiles') as any).insert({
+            id: user.id,
+            email: user.email,
+            display_name: user.email?.split('@')[0] || 'Usuario'
+          }).select().single().catch(() => null);
+        }
 
-          try {
-            const { data: membership } = await supabase
-              .from('group_members')
+        try {
+            const { data: membership } = await (supabase.from('group_members') as any)
               .select('group_id, groups(invite_code, name)')
               .eq('user_id', user.id)
               .maybeSingle();
@@ -77,7 +105,6 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
               });
             }
           } catch { /* silencioso */ }
-        }
 
         if (todayData.water || todayData.meals || todayData.fasting) {
           const mappedWater = (todayData.water || []).map(w => ({
@@ -138,7 +165,6 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
       } catch (e) {
         // Fallback a local
       }
-      setMounted(true);
     };
     loadData();
   }, [hydrateFromSupabase, updateProfile]);
@@ -191,63 +217,84 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
           {children}
         </div>
 
-        {/* FAB Sheet Modal */}
-        <Sheet
-          opened={isFabOpen}
-          onSheetClosed={() => setIsFabOpen(false)}
-          style={{ height: 'auto', borderRadius: '24px 24px 0 0' }}
-          swipeToClose
-          backdrop
-        >
-          <PageContent>
-            <Block>
-              <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
-              <h3 className="text-xl font-bold mb-6 text-gray-900">Registrar</h3>
-              <div className="grid grid-cols-2 gap-3 pb-8">
-                <FabAction 
-                  icon="drop.fill" 
-                  label="+ 1 vaso agua" 
-                  sublabel="Hidratación"
-                  color="bg-blue-50 text-blue-600" 
-                  onClick={() => { 
-                    useAppStore.getState().addWater(); 
-                    setIsFabOpen(false); 
-                  }} 
-                />
-                <FabAction 
-                  icon="sparkles" 
-                  label="Comida con IA" 
-                  sublabel="Describe y listo"
-                  color="bg-orange-50 text-orange-600" 
-                  onClick={() => { 
-                    setIsFabOpen(false); 
-                    setIsAiMealOpen(true);
-                  }} 
-                />
-                <FabAction 
-                  icon="scalemass.fill" 
-                  label="Mi peso" 
-                  sublabel="Registro diario"
-                  color="bg-indigo-50 text-indigo-600" 
-                  onClick={() => { 
-                    setIsFabOpen(false); 
-                    setIsWeightOpen(true);
-                  }} 
-                />
-                <FabAction 
-                  icon="pencil.and.list.clipboard" 
-                  label="Comida manual" 
-                  sublabel="Con macros"
-                  color="bg-green-50 text-green-600" 
-                  onClick={() => { 
-                    setIsFabOpen(false); 
-                    setIsAddMealOpen(true);
-                  }} 
-                />
-              </div>
-            </Block>
-          </PageContent>
-        </Sheet>
+        {/* FAB Custom Menu */}
+        <AnimatePresence>
+          {isFabOpen && (
+            <>
+              {/* Backdrop */}
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsFabOpen(false)}
+                className="fixed inset-0 bg-black/60 backdrop-blur-sm z-[60]"
+              />
+              {/* Menu Content */}
+              <motion.div 
+                initial={{ y: '100%' }}
+                animate={{ y: 0 }}
+                exit={{ y: '100%' }}
+                transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+                className="fixed bottom-0 left-0 right-0 max-w-md mx-auto bg-white rounded-t-[32px] p-6 z-[70] shadow-2xl"
+              >
+                <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
+                <h3 className="text-xl font-bold mb-6 text-gray-900 px-2">Registrar</h3>
+                <div className="grid grid-cols-2 gap-3 pb-8">
+                  <FabAction 
+                    icon={<Droplets size={24} />} 
+                    label="+ 1 vaso agua" 
+                    sublabel="Hidratación"
+                    color="bg-blue-50 text-blue-600" 
+                    onClick={() => { 
+                      useAppStore.getState().addWater(); 
+                      setIsFabOpen(false); 
+                    }} 
+                  />
+                  <FabAction 
+                    icon={<Sparkles size={24} />} 
+                    label="Comida con IA" 
+                    sublabel="Describe y listo"
+                    color="bg-orange-50 text-orange-600" 
+                    onClick={() => { 
+                      setIsFabOpen(false); 
+                      setIsAiMealOpen(true);
+                    }} 
+                  />
+                  <FabAction 
+                    icon={<Scale size={24} />} 
+                    label="Mi peso" 
+                    sublabel="Registro diario"
+                    color="bg-indigo-50 text-indigo-600" 
+                    onClick={() => { 
+                      setIsFabOpen(false); 
+                      setIsWeightOpen(true);
+                    }} 
+                  />
+                  <FabAction 
+                    icon={<ClipboardList size={24} />} 
+                    label="Comida manual" 
+                    sublabel="Con macros"
+                    color="bg-green-50 text-green-600" 
+                    onClick={() => { 
+                      setIsFabOpen(false); 
+                      setIsAddMealOpen(true);
+                    }} 
+                  />
+                  <FabAction 
+                    icon={<Play size={24} fill="currentColor" />} 
+                    label="Entrenar" 
+                    sublabel="Iniciar actividad"
+                    color="bg-[#D4F87A] text-[#1a2e00]" 
+                    onClick={() => { 
+                      setIsFabOpen(false); 
+                      router.push('/workout');
+                    }} 
+                  />
+                </div>
+              </motion.div>
+            </>
+          )}
+        </AnimatePresence>
 
         <AddMealModal isOpen={isAddMealOpen} onClose={() => setIsAddMealOpen(false)} />
         <AiMealModal isOpen={isAiMealOpen} onClose={() => setIsAiMealOpen(false)} />
@@ -255,23 +302,23 @@ export default function MobileLayout({ children }: { children: ReactNode }) {
 
         {/* Bottom Tab Bar */}
         <div className="absolute bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-gray-100 flex justify-around items-center z-40 pt-2 pb-[calc(10px+env(safe-area-inset-bottom))] min-h-[72px]">
-          <TabItem href="/" icon={<i className="f7-icons text-xl">house_fill</i>} label="Hoy" />
-          <TabItem href="/workout" icon={<i className="f7-icons text-xl">figure_run</i>} label="Entreno" />
+          <TabItem href="/" icon={<Home size={22} />} label="Hoy" />
+          <TabItem href="/workout" icon={<Dumbbell size={22} />} label="Entreno" />
           
           <div className="relative flex justify-center w-16">
             <button
               onClick={() => setIsFabOpen(!isFabOpen)}
               className={cn(
-                "absolute -top-10 w-16 h-16 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-all flex-shrink-0 z-50",
+                "absolute -top-10 w-16 h-16 rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-all flex-shrink-0 z-[80]",
                 isFabOpen ? "bg-gray-900 rotate-45" : "bg-[#D4F87A] shadow-[#D4F87A]/40"
               )}
             >
-              <i className={cn("f7-icons text-3xl", isFabOpen ? "text-white" : "text-gray-900", "transition-transform", isFabOpen ? "rotate-45" : "rotate-0")}>plus</i>
+              <Plus size={32} className={cn(isFabOpen ? "text-white" : "text-gray-900", "transition-transform", isFabOpen ? "rotate-45" : "rotate-0")} />
             </button>
           </div>
 
-          <TabItem href="/diary" icon={<i className="f7-icons text-xl">fork_knife</i>} label="Comer" />
-          <TabItem href="/profile" icon={<i className="f7-icons text-xl">person_fill</i>} label="Yo" />
+          <TabItem href="/diary" icon={<Utensils size={22} />} label="Comer" />
+          <TabItem href="/profile" icon={<User size={22} />} label="Yo" />
         </div>
       </div>
     </div>
@@ -295,10 +342,10 @@ function TabItem({ href, icon, label, className }: { href: string; icon: ReactNo
   );
 }
 
-function FabAction({ icon, label, sublabel, color, onClick }: { icon: string, label: string, sublabel: string, color: string, onClick: () => void }) {
+function FabAction({ icon, label, sublabel, color, onClick }: { icon: ReactNode, label: string, sublabel: string, color: string, onClick: () => void }) {
   return (
     <button onClick={onClick} className={cn("flex flex-col items-start gap-2 rounded-2xl p-4 transition-transform active:scale-95 group", color)}>
-      <i className="f7-icons text-2xl mb-1">{icon}</i>
+      <div className="mb-1">{icon}</div>
       <div className="text-left w-full">
         <div className="text-sm font-bold leading-tight line-clamp-1">{label}</div>
         <div className="text-xs opacity-70 leading-tight mt-1 line-clamp-1">{sublabel}</div>

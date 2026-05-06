@@ -1,7 +1,7 @@
 import { f7 } from 'framework7-react';
 
 export function notifyWaterAdded(amountMl: number) {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !f7 || !f7.toast) return;
   f7.toast.create({
     text: `¡Agregaste ${amountMl}ml de agua!`,
     closeTimeout: 2000,
@@ -11,7 +11,7 @@ export function notifyWaterAdded(amountMl: number) {
 }
 
 export function notifyMealAdded(name: string) {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !f7 || !f7.toast) return;
   f7.toast.create({
     text: `Registraste: ${name}`,
     closeTimeout: 2000,
@@ -21,7 +21,7 @@ export function notifyMealAdded(name: string) {
 }
 
 export function notifyWeightSaved(kg: number) {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !f7 || !f7.toast) return;
   f7.toast.create({
     text: `Peso guardado: ${kg} kg`,
     closeTimeout: 2000,
@@ -31,7 +31,7 @@ export function notifyWeightSaved(kg: number) {
 }
 
 export function notifyFastingComplete(hours: number) {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !f7 || !f7.notification) return;
   f7.notification.create({
     title: 'Hábitos',
     titleRightText: 'ahora',
@@ -43,7 +43,7 @@ export function notifyFastingComplete(hours: number) {
 }
 
 export function notifyFriendActivity(name: string, type: string) {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !f7 || !f7.notification) return;
   f7.notification.create({
     icon: '<i class="f7-icons text-purple-500">flame_fill</i>',
     title: 'Actividad en tu grupo',
@@ -54,7 +54,7 @@ export function notifyFriendActivity(name: string, type: string) {
 }
 
 export function notifyWaterReminder(currentMl: number, goalMl: number) {
-  if (typeof window === 'undefined') return;
+  if (typeof window === 'undefined' || !f7 || !f7.notification) return;
   f7.notification.create({
     title: 'Hidratación',
     subtitle: 'Recordatorio de agua',

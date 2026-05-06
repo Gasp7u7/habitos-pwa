@@ -10,7 +10,8 @@ import { GpsPoint } from '@/lib/gps/types';
 import { isValidGpsPoint, haversineDistanceMeters } from '@/lib/gps/tracker';
 
 import dynamic from 'next/dynamic';
-import { f7 } from 'framework7-react';
+import { MapPin, Dumbbell, Zap, Clock, Play, Square, Pause, Target, Circle, Activity, ChevronLeft } from 'lucide-react';
+
 
 const RouteMap = dynamic(() => import('@/components/gps/RouteMap'), { ssr: false, loading: () => (
   <div className="w-full h-full bg-gray-200 flex items-center justify-center">
@@ -30,10 +31,12 @@ function ActivityContent() {
   const [notes, setNotes] = useState('');
   const [gymSets, setGymSets] = useState(0);
   const [restTimer, setRestTimer] = useState<number | null>(null);
+  const [showMap, setShowMap] = useState(false);
   
-  const [isGpsReady, setIsGpsReady] = useState(false);
+  const [isGpsReady, setIsGpsReady] = useState(typeof window !== 'undefined' && 'geolocation' in navigator);
   const watchIdRef = useRef<number | null>(null);
   const lastPointRef = useRef<GpsPoint | null>(null);
+  const wakeLockRef = useRef<any>(null);
   
   // Combine exercises for lookup
   const ALL_EXERCISES = [...DEFAULT_EXERCISES, ...customExercises];
@@ -134,6 +137,46 @@ function ActivityContent() {
       if (interval) clearInterval(interval);
     };
   }, [currentActivity?.status, currentActivity?.durationSeconds, updateCurrentActivityMetrics]);
+  
+  // Manage Wake Lock
+  useEffect(() => {
+    const requestWakeLock = async () => {
+      if ('wakeLock' in navigator && currentActivity?.status === 'active') {
+        try {
+          wakeLockRef.current = await (navigator as any).wakeLock.request('screen');
+          console.log('Wake Lock activo');
+        } catch (err: any) {
+          console.error(`${err.name}, ${err.message}`);
+        }
+      }
+    };
+
+    const releaseWakeLock = async () => {
+      if (wakeLockRef.current) {
+        await wakeLockRef.current.release();
+        wakeLockRef.current = null;
+        console.log('Wake Lock liberado');
+      }
+    };
+
+    const handleVisibilityChange = async () => {
+      if (wakeLockRef.current !== null && document.visibilityState === 'visible') {
+        await requestWakeLock();
+      }
+    };
+
+    if (currentActivity?.status === 'active') {
+      requestWakeLock();
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    } else {
+      releaseWakeLock();
+    }
+
+    return () => {
+      releaseWakeLock();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
+  }, [currentActivity?.status]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -177,7 +220,12 @@ function ActivityContent() {
 
     return (
       <div className="p-6 bg-[#f8f9fa] min-h-full pb-32">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6 pt-4 tracking-tight">Actividad</h1>
+        <div className="flex items-center gap-2 mb-6 pt-4">
+            <button onClick={() => router.back()} className="p-2 -ml-2 text-gray-400 hover:text-gray-900 transition-colors">
+                <ChevronLeft size={24} />
+            </button>
+            <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Actividad</h1>
+        </div>
         
         <div className="bg-gray-100 p-1 rounded-2xl flex relative mb-8 overflow-x-auto snap-x hide-scrollbar">
           {(['walk', 'run', 'cycling', 'gym'] as const).map(type => (
@@ -200,7 +248,7 @@ function ActivityContent() {
 
         <div className="bg-[#D4F87A] rounded-[32px] p-6 mb-8 text-center flex flex-col items-center shadow-sm relative overflow-hidden">
           <div className="w-16 h-16 bg-white/40 backdrop-blur-sm rounded-full flex items-center justify-center mb-4 border border-white/50">
-            {activityType === 'gym' ? <i className="f7-icons text-3xl text-gray-900">dumbbell_fill</i> : <i className="f7-icons text-3xl text-gray-900">scope</i>}
+            {activityType === 'gym' ? <Dumbbell size={32} className="text-gray-900" /> : <Target size={32} className="text-gray-900" />}
           </div>
           <h2 className="text-xl font-bold text-gray-900 mb-1">¿Listo para moverte?</h2>
           <p className="text-sm font-medium text-gray-900/60 mb-6 relative z-10">
@@ -212,10 +260,10 @@ function ActivityContent() {
             onClick={() => startActivity(activityType)}
             className={cn(
               "w-full rounded-2xl py-4 font-bold text-lg flex justify-center items-center gap-2 transition-all shadow-md relative z-10",
-              canStart ? "bg-gray-900 text-white hover:bg-black active:scale-95" : "bg-gray-300 text-gray-500 cursor-not-allowed"
+              canStart ? "bg-gray-900 text-white hover:bg-black active:scale-95 shadow-lg shadow-black/10" : "bg-gray-300 text-gray-500 cursor-not-allowed"
             )}
           >
-            <i className="f7-icons text-xl fill-current">play_fill</i> Iniciar {getLabel(activityType)}
+            <Play size={20} fill="currentColor" /> Iniciar {getLabel(activityType)}
           </button>
         </div>
       </div>
@@ -230,16 +278,19 @@ function ActivityContent() {
       <div className="p-6 pb-32 bg-[#f8f9fa] min-h-full overflow-y-auto">
         <h1 className="text-2xl font-bold text-gray-900 mb-6 pt-4">Resumen de {getLabel(currentActivity.type)}</h1>
         
-        {/* Map Preview Placeholder - To be implemented with real GPS data */}
+        {/* Map Preview */}
         {isGpsActive && (
           <div className="w-full h-48 bg-gray-200 rounded-[24px] mb-6 overflow-hidden relative border border-gray-100 flex items-center justify-center">
-            {currentActivity.route && currentActivity.route.length >= 2 ? (
+            {currentActivity.route && currentActivity.route.length >= 1 ? (
               <RouteMap geojson={{
                 type: 'LineString',
                 coordinates: currentActivity.route.map(p => [p.longitude, p.latitude])
               }} />
             ) : (
-              <span className="text-gray-400 font-medium text-sm">El mapa estará disponible al finalizar</span>
+              <div className="flex flex-col items-center gap-2">
+                <div className="w-2 h-2 bg-blue-500 rounded-full animate-ping" />
+                <span className="text-gray-400 font-medium text-xs">Esperando señal GPS...</span>
+              </div>
             )}
           </div>
         )}
@@ -279,7 +330,7 @@ function ActivityContent() {
                 className={cn(
                   "flex-1 py-3 rounded-xl font-bold text-lg transition-colors border",
                   effort === level 
-                    ? "bg-purple-600 text-white border-purple-600 shadow-md" 
+                    ? "bg-[#D4F87A] text-[#1a2e00] border-[#D4F87A] shadow-md" 
                     : "bg-white text-gray-400 border-gray-200"
                 )}
               >
@@ -299,7 +350,7 @@ function ActivityContent() {
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             placeholder="¿Cómo estuvo el clima? ¿Alguna molestia?"
-            className="w-full bg-white border border-gray-200 rounded-2xl p-4 min-h-[100px] text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent transition-shadow"
+            className="w-full bg-white border border-gray-200 rounded-2xl p-4 min-h-[100px] text-gray-900 placeholder:text-gray-400 outline-none focus:ring-2 focus:ring-[#D4F87A] focus:border-transparent transition-shadow"
           />
         </div>
 
@@ -317,19 +368,11 @@ function ActivityContent() {
             onClick={async () => {
               endActivity(effort, 'normal', notes);
               
-              await new Promise(resolve => setTimeout(resolve, 50));
+              await new Promise(resolve => setTimeout(resolve, 100));
               
               const finished = useAppStore.getState().activities.slice(-1)[0];
               if (finished && finished.status === 'completed') {
                 createActivityLog(finished).catch(console.error);
-                
-                f7.toast.create({
-                  text: finished.type !== 'gym'
-                    ? `${(finished.distanceMeters / 1000).toFixed(2)} km guardados`
-                    : `Entreno de ${Math.floor(finished.durationSeconds / 60)} min guardado`,
-                  position: 'top',
-                  closeTimeout: 3000,
-                }).open();
               }
               
               router.push('/workout');
@@ -345,25 +388,36 @@ function ActivityContent() {
 
   // STATE 2: DURING ACTIVITY (active or paused)
   return (
-    <div className="flex flex-col h-full bg-gray-900 text-white">
+    <div className="flex flex-col h-full bg-gray-900 text-white overflow-hidden">
       {/* Solid abstract background */}
       <div className="absolute inset-0 z-0 opacity-20 bg-gradient-to-b from-gray-800 to-black" />
       
       <div className="relative z-10 flex flex-col h-full p-6">
-        <div className="flex justify-between items-center pt-8 mb-auto">
+        <div className="flex justify-between items-center pt-8 mb-6">
           {isGpsActive ? (
-            <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full flex gap-2 items-center text-xs font-semibold text-[#D4F87A]">
-              <i className="f7-icons text-xs">location_fill</i> GPS Excelente
+            <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full flex gap-2 items-center text-xs font-semibold text-[#D4F87A] border border-white/10">
+              <MapPin size={12} /> GPS Activo
             </div>
           ) : (
-            <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full flex gap-2 items-center text-xs font-semibold text-[#D4F87A]">
-              <i className="f7-icons text-xs">dumbbell_fill</i> Modo Indoor
+            <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full flex gap-2 items-center text-xs font-semibold text-[#D4F87A] border border-white/10">
+              <Dumbbell size={12} /> Modo Indoor
             </div>
           )}
-          <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full flex gap-2 items-center text-xs font-semibold text-white">
-            <i className="f7-icons text-xs text-[#D4F87A]">bolt_fill</i> {getLabel(currentActivity.type)}
+          <div className="bg-black/40 backdrop-blur-md px-3 py-1.5 rounded-full flex gap-2 items-center text-xs font-semibold text-white border border-white/10">
+            <Zap size={12} className="text-[#D4F87A]" /> {getLabel(currentActivity.type)}
           </div>
         </div>
+
+        {isGpsActive && (
+          <div className="flex justify-center mb-4">
+            <button 
+              onClick={() => setShowMap(true)}
+              className="bg-white/10 backdrop-blur-md px-6 py-2.5 rounded-full text-sm font-bold text-[#D4F87A] flex items-center gap-2 border border-white/10 active:scale-95 transition-all"
+            >
+              <MapPin size={16} /> Ver mapa en vivo
+            </button>
+          </div>
+        )}
 
         {isGpsActive ? (
           <LiveActivityStats elapsedSeconds={currentActivity.durationSeconds} distanceMeters={currentActivity.distanceMeters} />
@@ -376,7 +430,7 @@ function ActivityContent() {
             <div className="bg-black/40 backdrop-blur-md rounded-[32px] p-6 grid grid-cols-2 w-full gap-8 border border-white/10 relative mt-4">
               {restTimer !== null && restTimer > 0 && (
                 <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-indigo-500 text-white px-4 py-1.5 rounded-full text-xs font-bold flex items-center gap-2 shadow-lg animate-pulse">
-                  <i className="f7-icons text-xs">clock_fill</i> Descanso: {restTimer}s
+                  <Clock size={12} /> Descanso: {restTimer}s
                 </div>
               )}
                <>
@@ -403,13 +457,13 @@ function ActivityContent() {
               }}
               className="bg-white/10 backdrop-blur-md text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 border border-white/20 active:bg-white/20 transition-colors"
             >
-              <i className="f7-icons text-lg">bolt_fill</i> +1 Serie
+              <Zap size={18} /> +1 Serie
             </button>
             <button 
               onClick={() => setRestTimer(timer => timer ? null : 60)}
               className="bg-indigo-500 text-white py-4 rounded-2xl font-bold flex items-center justify-center gap-2 active:bg-indigo-600 transition-colors"
             >
-              <i className="f7-icons text-lg">clock_fill</i> {restTimer ? 'Parar Reloj' : '+ Descanso'}
+              <Clock size={18} /> {restTimer ? 'Parar' : '+ Descanso'}
             </button>
           </div>
         )}
@@ -446,13 +500,13 @@ function ActivityContent() {
                 }}
                 className="w-20 h-20 bg-gray-800 rounded-full flex items-center justify-center active:scale-95 transition-transform"
               >
-                <i className="f7-icons text-3xl drop-shadow-md text-white">stop_fill</i>
+                <Square size={32} fill="white" />
               </button>
               <button 
                 onClick={resumeActivity}
                 className="w-20 h-20 bg-[#D4F87A] rounded-full flex items-center justify-center active:scale-95 transition-transform"
               >
-                <i className="f7-icons text-4xl drop-shadow-md ml-1 text-gray-900">play_fill</i>
+                <Play size={32} fill="currentColor" className="ml-1 text-gray-900" />
               </button>
             </>
           ) : (
@@ -460,11 +514,49 @@ function ActivityContent() {
               onClick={pauseActivity}
               className="w-20 h-20 bg-[#D4F87A] rounded-full flex items-center justify-center active:scale-95 transition-transform"
             >
-              <i className="f7-icons text-3xl drop-shadow-md text-gray-900">pause_fill</i>
+              <Pause size={32} fill="currentColor" className="text-gray-900" />
             </button>
           )}
         </div>
       </div>
+
+      {/* Map Modal */}
+      {showMap && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 animate-in fade-in duration-300">
+          <div className="absolute inset-0 bg-black/90 backdrop-blur-md" onClick={() => setShowMap(false)} />
+          <div className="bg-gray-900 w-full max-w-lg aspect-square rounded-[40px] overflow-hidden border border-white/10 shadow-2xl relative z-10 animate-in zoom-in-95 duration-300">
+            <div className="absolute top-4 right-4 z-20">
+              <button 
+                onClick={() => setShowMap(false)}
+                className="w-10 h-10 bg-black/60 backdrop-blur-md rounded-full flex items-center justify-center text-white border border-white/20 active:scale-90 transition-all"
+              >
+                <Square size={16} className="rotate-45" />
+              </button>
+            </div>
+            <RouteMap 
+               geojson={{
+                 type: 'LineString',
+                 coordinates: currentActivity.route.map(p => [p.longitude, p.latitude])
+               }} 
+               isLive
+            />
+            <div className="absolute bottom-6 left-6 right-6 pointer-events-none">
+               <div className="bg-black/60 backdrop-blur-md p-4 rounded-2xl border border-white/10">
+                  <div className="flex justify-between items-end">
+                     <div>
+                        <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Distancia</span>
+                        <span className="text-2xl font-bold text-white">{(currentActivity.distanceMeters / 1000).toFixed(2)} km</span>
+                     </div>
+                     <div className="text-right">
+                        <span className="block text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">Tiempo</span>
+                        <span className="text-2xl font-bold text-white">{formatTime(currentActivity.durationSeconds)}</span>
+                     </div>
+                  </div>
+               </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

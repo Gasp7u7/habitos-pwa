@@ -6,6 +6,10 @@ import { es } from 'date-fns/locale';
 import { cn } from '@/lib/utils';
 import ExerciseLibrary from '@/components/workouts/ExerciseLibrary';
 import dynamic from 'next/dynamic';
+import { Footprints, Bike, Dumbbell, Zap, BookOpen, Star, Share2 } from 'lucide-react';
+import LazyRouteMap from '@/components/gps/LazyRouteMap';
+import PosterModal from '@/components/modals/PosterModal';
+import { ActivityEntry } from '@/lib/types';
 
 const RouteMap = dynamic(() => import('@/components/gps/RouteMap'), { ssr: false, loading: () => (
   <div className="w-full h-full bg-gray-200 flex items-center justify-center">
@@ -16,7 +20,8 @@ const RouteMap = dynamic(() => import('@/components/gps/RouteMap'), { ssr: false
 export default function WorkoutsPage() {
   const { activities } = useAppStore();
   const [filter, setFilter] = useState<'all' | 'walk' | 'run' | 'gym' | 'cycling'>('all');
-  const [activeTab, setActiveTab] = useState<'history' | 'library'>('history');
+  const [activeTab, setActiveTab] = useState<'history' | 'exercises' | 'routines'>('history');
+  const [selectedPosterActivity, setSelectedPosterActivity] = useState<ActivityEntry | null>(null);
 
   // Stats calculation
   const filteredActivities = activities.filter(a => filter === 'all' || a.type === filter);
@@ -28,11 +33,11 @@ export default function WorkoutsPage() {
 
   const getIcon = (type: string) => {
     switch (type) {
-      case 'walk': return <i className="f7-icons text-2xl text-purple-600">figure_walk</i>;
-      case 'run': return <i className="f7-icons text-2xl text-red-600">figure_run</i>;
-      case 'cycling': return <i className="f7-icons text-2xl text-sky-600">bicycle</i>;
-      case 'gym': return <i className="f7-icons text-2xl text-slate-700">dumbbell_fill</i>;
-      default: return <i className="f7-icons text-2xl text-gray-600">bolt_fill</i>;
+      case 'walk': return <Footprints size={22} className="text-purple-600" />;
+      case 'run': return <Zap size={22} className="text-red-600" />;
+      case 'cycling': return <Bike size={22} className="text-sky-600" />;
+      case 'gym': return <Dumbbell size={22} className="text-slate-700" />;
+      default: return <Zap size={22} className="text-gray-600" />;
     }
   };
 
@@ -65,22 +70,28 @@ export default function WorkoutsPage() {
       <h1 className="text-2xl font-bold text-gray-900 mb-6 pt-4 tracking-tight">Entrenamientos</h1>
 
       {/* Tabs */}
-      <div className="bg-gray-100 p-1 rounded-2xl flex mb-6">
+      <div className="bg-gray-100 p-1.5 rounded-2xl flex mb-6 shadow-inner">
         <button
-          className={cn("flex-1 py-2.5 text-sm font-bold rounded-xl transition-colors", activeTab === 'history' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500')}
+          className={cn("flex-1 py-2.5 text-xs font-bold rounded-xl transition-all", activeTab === 'history' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-500')}
           onClick={() => setActiveTab('history')}
         >
           Historial
         </button>
         <button
-          className={cn("flex-1 py-2.5 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors", activeTab === 'library' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500')}
-          onClick={() => setActiveTab('library')}
+          className={cn("flex-1 py-2.5 text-xs font-bold rounded-xl transition-all", activeTab === 'exercises' ? 'bg-white text-gray-900 shadow-md' : 'text-gray-500')}
+          onClick={() => setActiveTab('exercises')}
         >
-          <i className="f7-icons text-base">book_fill</i> Biblioteca
+          Ejercicios
+        </button>
+        <button
+          className={cn("flex-1 py-2.5 text-xs font-bold rounded-xl transition-all", activeTab === 'routines' ? 'bg-[#D4F87A] text-[#1a2e00] shadow-md border border-[#D4F87A]' : 'text-gray-500')}
+          onClick={() => setActiveTab('routines')}
+        >
+          Rutinas
         </button>
       </div>
 
-      {activeTab === 'history' ? (
+      {activeTab === 'history' && (
         <>
           {/* Stats Summary */}
           <div className="bg-white rounded-[32px] p-6 shadow-sm border border-gray-100 mb-6">
@@ -92,7 +103,7 @@ export default function WorkoutsPage() {
             </div>
           </div>
           <div className="w-12 h-12 bg-[#D4F87A] rounded-full flex items-center justify-center text-[#1a2e00]">
-            <i className="f7-icons text-xl">star_fill</i>
+            <Star size={20} fill="currentColor" />
           </div>
         </div>
         
@@ -113,7 +124,7 @@ export default function WorkoutsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex gap-2 overflow-x-auto hide-scrollbar snap-x mb-6 pb-1">
+      <div className="flex gap-2 overflow-x-auto scrollbar-hide snap-x mb-6 pb-1">
         {(['all', 'run', 'gym', 'cycling', 'walk'] as const).map(f => (
           <button
             key={f}
@@ -153,6 +164,15 @@ export default function WorkoutsPage() {
                     </p>
                   </div>
                 </div>
+                {isGpsActivity && activity.route && activity.route.length >= 2 && (
+                    <button 
+                     onClick={() => setSelectedPosterActivity(activity)}
+                     className="px-3 py-1.5 rounded-full bg-[#D4F87A] text-[#1a2e00] font-bold text-[10px] uppercase tracking-wider active:scale-95 transition-all shadow-sm flex items-center gap-1.5"
+                    >
+                      <Share2 size={12} />
+                      Poster
+                    </button>
+                )}
               </div>
 
               {/* Stats */}
@@ -188,7 +208,7 @@ export default function WorkoutsPage() {
 
               {/* Map/Image */}
               {isGpsActivity && (
-                <div className="w-full h-48 bg-gray-100 relative overflow-hidden">
+                <LazyRouteMap>
                   {activity.route && activity.route.length >= 2 ? (
                      <div className="w-full h-full pointer-events-none">
                        <RouteMap geojson={{
@@ -201,7 +221,7 @@ export default function WorkoutsPage() {
                         <span className="text-gray-400 font-medium text-xs">Sin mapa</span>
                      </div>
                   )}
-                </div>
+                </LazyRouteMap>
               )}
               
               {/* Footer Notes */}
@@ -216,16 +236,24 @@ export default function WorkoutsPage() {
 
         {filteredActivities.length === 0 && (
           <div className="bg-white rounded-[32px] p-8 text-center border border-gray-100 text-gray-500 shadow-sm mt-8">
-            <i className="f7-icons text-5xl mx-auto mb-4 opacity-20">bolt_fill</i>
+            <Zap size={48} className="mx-auto mb-4 opacity-20 text-gray-400" />
             <p className="font-bold text-gray-900 mb-1">No hay entrenamientos</p>
             <p className="text-sm">Aún no has registrado actividades de este tipo.</p>
           </div>
         )}
       </div>
         </>
-      ) : (
-        <ExerciseLibrary />
       )}
+
+      {(activeTab === 'exercises' || activeTab === 'routines') && (
+        <ExerciseLibrary key={activeTab} initialMode={activeTab === 'exercises' ? 'exercises' : 'routines'} />
+      )}
+
+      <PosterModal 
+        isOpen={!!selectedPosterActivity} 
+        onClose={() => setSelectedPosterActivity(null)} 
+        activity={selectedPosterActivity} 
+      />
     </div>
   );
 }

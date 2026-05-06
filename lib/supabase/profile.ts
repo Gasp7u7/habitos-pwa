@@ -8,6 +8,7 @@ export type ProfileUpdate = {
   height_cm?: number | null;
   weight_kg?: number | null;
   primary_goal?: string | null;
+  goals?: string[] | null;
   diet_type?: string | null;
   fasting_schedule?: string | null;
   has_completed_onboarding?: boolean;
@@ -15,6 +16,11 @@ export type ProfileUpdate = {
   daily_calories?: number;
   daily_activity_minutes?: number;
   glass_size_ml?: number;
+  age?: number | null;
+  gender?: string | null;
+  target_protein_g?: number;
+  target_carbs_g?: number;
+  target_fat_g?: number;
 };
 
 export async function getProfile(userId: string): Promise<ProfileRow> {

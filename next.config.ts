@@ -31,7 +31,7 @@ const nextConfig: NextConfig = {
       },
     ],
   },
-  output: 'standalone',
+  output: 'export',
   transpilePackages: ['motion'],
   webpack: (config, {dev}) => {
     // HMR is disabled in AI Studio via DISABLE_HMR env var.

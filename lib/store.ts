@@ -18,18 +18,27 @@ type AppState = {
   currentActivity: ActivityEntry | null;
   currentFast: FastingEntry | null;
   activeRoutine: Routine | null;
+  isNavbarVisible: boolean;
+  lastSync: number | null;
   
   // Actions
   hydrateFromSupabase: (water: WaterEntry[], meals: MealEntry[], fast: FastingEntry | null, activities: ActivityEntry[]) => void;
   setActiveRoutine: (routine: Routine | null) => void;
+  setNavbarVisibility: (visible: boolean) => void;
   updateProfile: (updates: Partial<UserProfile>) => void;
   addWater: (amount?: number) => void;
   addMeal: (meal: Omit<MealEntry, 'id' | 'userId' | 'loggedAt'>) => void;
+  updateMeal: (id: string, updates: Partial<Omit<MealEntry, 'id' | 'userId' | 'loggedAt'>>) => void;
   deleteMeal: (id: string) => void;
   deleteWater: (id: string) => void;
 
   addCustomExercise: (exercise: Omit<Exercise, 'id' | 'isCustom'>) => void;
+  deleteCustomExercise: (id: string) => void;
+  updateCustomExercise: (id: string, updates: Partial<Exercise>) => void;
+  
   addCustomRoutine: (routine: Omit<Routine, 'id' | 'isCustom'>) => void;
+  deleteCustomRoutine: (id: string) => void;
+  updateCustomRoutine: (id: string, updates: Partial<Routine>) => void;
 
   startFast: (targetHours: number) => void;
   endFast: (status: 'completed' | 'early') => void;
@@ -55,6 +64,9 @@ const initialProfile: UserProfile = {
     waterMl: 2500,
     calories: 2200,
     activityMinutes: 45,
+    proteinG: 160,
+    carbsG: 275,
+    fatG: 75,
   },
   glassSizeMl: 250
 };
@@ -74,15 +86,20 @@ export const useAppStore = create<AppState>()(
       currentActivity: null,
       currentFast: null,
       activeRoutine: null,
+      isNavbarVisible: true,
+      lastSync: null,
 
       hydrateFromSupabase: (water, meals, fast, activities) => set((state) => ({
         water,
         meals,
         currentFast: fast || state.currentFast,
-        activities: activities.length > 0 ? activities : state.activities
+        activities: activities.length > 0 ? activities : state.activities,
+        lastSync: Date.now()
       })),
 
       setActiveRoutine: (routine) => set({ activeRoutine: routine }),
+      
+      setNavbarVisibility: (visible) => set({ isNavbarVisible: visible }),
 
       updateProfile: (updates) => set((state) => ({
         profile: { ...state.profile, ...updates }
@@ -92,8 +109,24 @@ export const useAppStore = create<AppState>()(
         customExercises: [...state.customExercises, { ...exercise, id: `cx_${Date.now()}`, isCustom: true }]
       })),
 
+      deleteCustomExercise: (id) => set((state) => ({
+        customExercises: state.customExercises.filter(ex => ex.id !== id)
+      })),
+
+      updateCustomExercise: (id, updates) => set((state) => ({
+        customExercises: state.customExercises.map(ex => ex.id === id ? { ...ex, ...updates } : ex)
+      })),
+
       addCustomRoutine: (routine) => set((state) => ({
         customRoutines: [...state.customRoutines, { ...routine, id: `cr_${Date.now()}`, isCustom: true }]
+      })),
+
+      deleteCustomRoutine: (id) => set((state) => ({
+        customRoutines: state.customRoutines.filter(r => r.id !== id)
+      })),
+
+      updateCustomRoutine: (id, updates) => set((state) => ({
+        customRoutines: state.customRoutines.map(r => r.id === id ? { ...r, ...updates } : r)
       })),
 
       startFast: (targetHours) => {
@@ -175,6 +208,10 @@ export const useAppStore = create<AppState>()(
           }]
         }));
       },
+
+      updateMeal: (id, updates) => set((state) => ({
+        meals: state.meals.map(m => m.id === id ? { ...m, ...updates } : m)
+      })),
 
       deleteMeal: (id) => {
         deleteMealLog(id).catch(console.error);

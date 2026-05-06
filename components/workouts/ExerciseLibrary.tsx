@@ -1,6 +1,7 @@
 'use client';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import { Flame, X, Search, Plus, PlayCircle, Trash2, Pencil } from 'lucide-react';
 
 
 import { MuscleGroup, Environment, Exercise, Routine, RoutineExercise } from '@/lib/types';
@@ -106,14 +107,14 @@ const DEFAULT_ROUTINES: Routine[] = [
   }
 ];
 
-export default function ExerciseLibrary() {
+export default function ExerciseLibrary({ initialMode = 'exercises' }: { initialMode?: 'exercises' | 'routines' }) {
   const router = useRouter();
-  const { customExercises, customRoutines, addCustomExercise, addCustomRoutine } = useAppStore();
+  const { customExercises, customRoutines, addCustomExercise, addCustomRoutine, deleteCustomExercise, deleteCustomRoutine } = useAppStore();
 
   const ALL_EXERCISES = [...DEFAULT_EXERCISES, ...customExercises];
   const ALL_ROUTINES = [...DEFAULT_ROUTINES, ...customRoutines];
 
-  const [viewMode, setViewMode] = useState<'exercises' | 'routines'>('exercises');
+  const [viewMode, setViewMode] = useState<'exercises' | 'routines'>(initialMode);
   const [activeMuscle, setActiveMuscle] = useState<MuscleGroup | 'todo'>('todo');
   const [activeEnvironment, setActiveEnvironment] = useState<Environment | 'todo'>('todo');
   const [searchQuery, setSearchQuery] = useState('');
@@ -138,40 +139,92 @@ export default function ExerciseLibrary() {
   const [newRutEnvironment, setNewRutEnvironment] = useState<Environment>('gym');
   const [newRutDescription, setNewRutDescription] = useState('');
   const [newRutExercises, setNewRutExercises] = useState<RoutineExercise[]>([]);
+
+  // Edit State
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const startEditExercise = (ex: Exercise) => {
+    setNewExName(ex.name);
+    setNewExMuscleGroups(ex.muscleGroups);
+    setNewExEnvironment(ex.environment);
+    setNewExDifficulty(ex.difficulty);
+    setNewExDescription(ex.description || '');
+    setNewExSets(ex.defaultSets || 3);
+    setNewExReps(ex.defaultReps || 10);
+    setNewExDuration(ex.defaultDuration || 0);
+    setEditingId(ex.id);
+    setIsCreatingExercise(true);
+  };
+
+  const startEditRoutine = (rut: Routine) => {
+    setNewRutName(rut.name);
+    setNewRutLevel(rut.level);
+    setNewRutEnvironment(rut.environment);
+    setNewRutDescription(rut.description || '');
+    setNewRutExercises(rut.exercises);
+    setEditingId(rut.id);
+    setIsCreatingRoutine(true);
+  };
   
   const handleSaveExercise = () => {
     if(!newExName || newExMuscleGroups.length === 0 || newExEnvironment.length === 0) return;
-    addCustomExercise({
-      name: newExName,
-      muscleGroups: newExMuscleGroups,
-      environment: newExEnvironment,
-      difficulty: newExDifficulty,
-      description: newExDescription || 'Ejercicio personalizado.',
-      defaultSets: newExSets,
-      defaultReps: newExReps,
-      defaultDuration: newExDuration
-    });
+    
+    if (editingId) {
+      useAppStore.getState().updateCustomExercise(editingId, {
+        name: newExName,
+        muscleGroups: newExMuscleGroups,
+        environment: newExEnvironment,
+        difficulty: newExDifficulty,
+        description: newExDescription,
+        defaultSets: newExSets,
+        defaultReps: newExReps,
+        defaultDuration: newExDuration
+      });
+    } else {
+      addCustomExercise({
+        name: newExName,
+        muscleGroups: newExMuscleGroups,
+        environment: newExEnvironment,
+        difficulty: newExDifficulty,
+        description: newExDescription || 'Ejercicio personalizado.',
+        defaultSets: newExSets,
+        defaultReps: newExReps,
+        defaultDuration: newExDuration
+      });
+    }
     setIsCreatingExercise(false);
-    setNewExName('');
-    setNewExMuscleGroups([]);
-    setNewExEnvironment([]);
-    setNewExDescription('');
+    setEditingId(null);
+    // ... rest of reset
   };
 
   const handleSaveRoutine = () => {
     if(!newRutName || newRutExercises.length === 0) return;
-    addCustomRoutine({
-      name: newRutName,
-      level: newRutLevel,
-      environment: newRutEnvironment,
-      description: newRutDescription || 'Rutina personalizada.',
-      exercises: newRutExercises
-    });
+
+    if (editingId) {
+      useAppStore.getState().updateCustomRoutine(editingId, {
+        name: newRutName,
+        level: newRutLevel,
+        environment: newRutEnvironment,
+        description: newRutDescription,
+        exercises: newRutExercises
+      });
+    } else {
+      addCustomRoutine({
+        name: newRutName,
+        level: newRutLevel,
+        environment: newRutEnvironment,
+        description: newRutDescription || 'Rutina personalizada.',
+        exercises: newRutExercises
+      });
+    }
     setIsCreatingRoutine(false);
-    setNewRutName('');
-    setNewRutExercises([]);
-    setNewRutDescription('');
+    setEditingId(null);
+    // ... rest of reset
   };
+
+  // Routine Filters
+  const [activeLevel, setActiveLevel] = useState<string | 'todos'>('todos');
+  const [selectedRoutine, setSelectedRoutine] = useState<Routine | null>(null);
 
   const filteredExercises = ALL_EXERCISES.filter(ex => {
     const matchesMuscle = activeMuscle === 'todo' || ex.muscleGroups.includes(activeMuscle);
@@ -180,9 +233,17 @@ export default function ExerciseLibrary() {
     return matchesMuscle && matchesEnv && matchesSearch;
   });
 
+  const filteredRoutines = ALL_ROUTINES.filter(rut => {
+    const matchesLevel = activeLevel === 'todos' || rut.level === activeLevel;
+    const matchesEnv = activeEnvironment === 'todo' || rut.environment === activeEnvironment;
+    const matchesSearch = rut.name.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesLevel && matchesEnv && matchesSearch;
+  });
+
   return (
     <div className="space-y-6">
-      <div className="bg-gray-100 p-1 rounded-2xl flex">
+      {/* Sub-navigation hidden as it's now managed by the parent page tabs */}
+      <div className="hidden bg-gray-100 p-1 rounded-2xl flex">
         <button
           className={cn("flex-1 py-2.5 text-sm font-bold rounded-xl transition-colors", viewMode === 'exercises' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500')}
           onClick={() => setViewMode('exercises')}
@@ -193,8 +254,22 @@ export default function ExerciseLibrary() {
           className={cn("flex-1 py-2.5 text-sm font-bold rounded-xl flex items-center justify-center gap-2 transition-colors", viewMode === 'routines' ? 'bg-[#D4F87A] text-[#1a2e00] shadow-sm' : 'text-gray-500')}
           onClick={() => setViewMode('routines')}
         >
-          <i className="f7-icons text-base">flame_fill</i> Rutinas Armadas
+          <Flame size={16} /> Rutinas Armadas
         </button>
+      </div>
+
+      {/* Shared Search Bar for both modes */}
+      <div className="px-1 pt-2 pb-4">
+        <div className="flex items-center bg-white border border-gray-100 rounded-[32px] px-7 py-1 shadow-sm focus-within:ring-4 focus-within:ring-indigo-500/5 focus-within:border-indigo-400 transition-all group">
+          <Search size={22} className="text-gray-400 group-focus-within:text-indigo-500 transition-colors shrink-0" />
+          <input
+            type="text"
+            placeholder={viewMode === 'exercises' ? "Buscar ejercicios..." : "Buscar rutinas..."}
+            className="flex-1 !py-5 !px-5 !bg-transparent text-gray-900 font-bold placeholder:text-gray-300 focus:outline-none text-base"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
       </div>
 
       {viewMode === 'exercises' ? (
@@ -202,9 +277,9 @@ export default function ExerciseLibrary() {
           {isCreatingExercise ? (
             <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm flex flex-col gap-5">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="font-bold text-xl text-gray-900">Nuevo Ejercicio</h3>
-                <button onClick={() => setIsCreatingExercise(false)} className="text-gray-400 hover:text-gray-600">
-                   <i className="f7-icons text-2xl">xmark</i>
+                <h3 className="font-bold text-xl text-gray-900">{editingId ? 'Editar Ejercicio' : 'Nuevo Ejercicio'}</h3>
+                <button onClick={() => { setIsCreatingExercise(false); setEditingId(null); }} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 active:scale-90 transition-transform">
+                   <X size={16} />
                 </button>
               </div>
               
@@ -214,7 +289,7 @@ export default function ExerciseLibrary() {
                   type="text"
                   value={newExName}
                   onChange={(e) => setNewExName(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-gray-900 font-medium focus:outline-none focus:border-indigo-500"
+                  className="w-full !bg-gray-50 !border !border-gray-200 rounded-xl !py-3 !px-4 text-gray-900 font-medium focus:outline-none focus:border-indigo-500"
                   placeholder="Ej. Curl Martillo"
                 />
               </div>
@@ -278,15 +353,15 @@ export default function ExerciseLibrary() {
                 <div className="grid grid-cols-3 gap-2">
                   <div>
                     <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Series</label>
-                    <input type="number" value={newExSets} onChange={(e) => setNewExSets(Number(e.target.value))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-indigo-500" min="1" />
+                    <input type="number" value={newExSets} onChange={(e) => setNewExSets(Number(e.target.value))} className="w-full !bg-gray-50 !border !border-gray-200 rounded-xl !py-2 !px-3 text-sm focus:outline-none focus:border-indigo-500" min="1" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Reps</label>
-                    <input type="number" value={newExReps} onChange={(e) => setNewExReps(Number(e.target.value))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-indigo-500" min="0" />
+                    <input type="number" value={newExReps} onChange={(e) => setNewExReps(Number(e.target.value))} className="w-full !bg-gray-50 !border !border-gray-200 rounded-xl !py-2 !px-3 text-sm focus:outline-none focus:border-indigo-500" min="0" />
                   </div>
                   <div>
                     <label className="block text-[10px] font-bold text-gray-400 uppercase mb-1">Tiempo (s)</label>
-                    <input type="number" value={newExDuration} onChange={(e) => setNewExDuration(Number(e.target.value))} className="w-full bg-gray-50 border border-gray-200 rounded-xl py-2 px-3 text-sm focus:outline-none focus:border-indigo-500" min="0" />
+                    <input type="number" value={newExDuration} onChange={(e) => setNewExDuration(Number(e.target.value))} className="w-full !bg-gray-50 !border !border-gray-200 rounded-xl !py-2 !px-3 text-sm focus:outline-none focus:border-indigo-500" min="0" />
                   </div>
                 </div>
               </div>
@@ -306,109 +381,110 @@ export default function ExerciseLibrary() {
                 disabled={!newExName || newExMuscleGroups.length === 0 || newExEnvironment.length === 0}
                 className="w-full mt-2 bg-[#D4F87A] text-[#1a2e00] rounded-[20px] py-4 font-bold text-sm active:scale-95 transition-transform disabled:opacity-50 disabled:active:scale-100 shadow-sm"
               >
-                Guardar Ejercicio
+                {editingId ? 'Actualizar Ejercicio' : 'Guardar Ejercicio'}
               </button>
             </div>
           ) : (
             <>
-              {/* Search & Env Filter */}
+              {/* Filters Container */}
           <div className="flex flex-col gap-4">
-            <div className="relative">
-              <div className="absolute inset-y-0 left-4 flex items-center pointer-events-none">
-                <i className="f7-icons text-xl text-gray-400">search</i>
-              </div>
-              <input
-                type="text"
-                placeholder="Buscar ejercicios..."
-                className="w-full bg-white border border-gray-200 rounded-[24px] py-3.5 pl-12 pr-4 text-gray-900 font-medium placeholder:text-gray-400 focus:outline-none focus:border-indigo-500 shadow-sm"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-              />
-            </div>
-
-            <div className="bg-gray-100 p-1 rounded-2xl flex">
+            <div className="bg-gray-100/50 p-1 rounded-2xl flex border border-gray-200/50">
               <button
-                className={cn("flex-1 py-2 text-sm font-bold rounded-xl transition-colors", activeEnvironment === 'todo' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500')}
+                className={cn("flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all", activeEnvironment === 'todo' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400')}
                 onClick={() => setActiveEnvironment('todo')}
               >
                 Todo
               </button>
               <button
-                className={cn("flex-1 py-2 text-sm font-bold rounded-xl transition-colors", activeEnvironment === 'gym' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500')}
+                className={cn("flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all", activeEnvironment === 'gym' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400')}
                 onClick={() => setActiveEnvironment('gym')}
               >
-                Gym
+                Gimnasio
               </button>
               <button
-                className={cn("flex-1 py-2 text-sm font-bold rounded-xl transition-colors", activeEnvironment === 'home' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500')}
+                className={cn("flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded-xl transition-all", activeEnvironment === 'home' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-400')}
                 onClick={() => setActiveEnvironment('home')}
               >
-                Casa / Parque
+                Casa
               </button>
+            </div>
+
+            <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
+              {(['todo', 'pecho', 'espalda', 'piernas', 'brazos', 'core', 'cardio'] as const).map(muscle => (
+                <button
+                  key={muscle}
+                  onClick={() => setActiveMuscle(muscle)}
+                  className={cn(
+                    "px-5 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all border",
+                    activeMuscle === muscle
+                      ? "bg-gray-900 text-white shadow-md border-gray-900"
+                      : "bg-white text-gray-400 border-gray-100 shadow-sm"
+                  )}
+                >
+                  {muscle === 'todo' ? 'Todos' : muscle}
+                </button>
+              ))}
             </div>
           </div>
 
-          {/* Muscle Filter */}
-          <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-2">
-            {(['todo', 'pecho', 'espalda', 'piernas', 'brazos', 'core', 'cardio'] as const).map(muscle => (
-              <button
-                key={muscle}
-                onClick={() => setActiveMuscle(muscle)}
-                className={cn(
-                  "px-5 py-2.5 rounded-[20px] text-sm font-bold whitespace-nowrap transition-transform active:scale-95",
-                  activeMuscle === muscle
-                    ? "bg-[#D4F87A] text-[#1a2e00] shadow-sm"
-                    : "bg-white text-gray-600 border border-gray-200"
-                )}
-              >
-                {muscle === 'todo' ? 'Todos los grupos' : muscle.charAt(0).toUpperCase() + muscle.slice(1)}
-              </button>
-            ))}
-          </div>
-
           <button
-            onClick={() => setIsCreatingExercise(true)}
-            className="w-full bg-white border border-gray-200 text-gray-900 rounded-[20px] py-3.5 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform"
+            onClick={() => { setIsCreatingExercise(true); setEditingId(null); }}
+            className="w-full bg-[#D4F87A] text-[#1a2e00] rounded-[24px] py-4 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-sm"
           >
-            <i className="f7-icons text-lg">plus</i> Añadir Ejercicio Personalizado
+            <Plus size={18} /> Nuevo Ejercicio Personalizado
           </button>
 
           {/* Exercise List */}
-          <div className="grid gap-4">
+          <div className="grid gap-3">
             {filteredExercises.length > 0 ? (
               filteredExercises.map(ex => (
-                <div key={ex.id} className="bg-white p-5 rounded-[24px] border border-gray-100 shadow-sm flex flex-col gap-3">
+                <div key={ex.id} className="bg-white p-5 rounded-[28px] border border-gray-100 shadow-sm flex flex-col gap-3">
                   <div className="flex justify-between items-start gap-4">
                     <div>
-                      <h4 className="font-bold text-gray-900 text-lg leading-tight mb-1">{ex.name}</h4>
-                      <div className="flex flex-wrap gap-2 mt-2">
+                      <h4 className="font-bold text-gray-900 text-lg leading-tight">{ex.name}</h4>
+                      <div className="flex flex-wrap gap-1.5 mt-2">
                         {ex.muscleGroups.map(mg => (
-                          <span key={mg} className="inline-block bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-widest px-2 py-1 rounded-md">
+                          <span key={mg} className="bg-gray-50 text-gray-400 text-[8px] font-bold uppercase tracking-widest px-2 py-0.5 rounded-md border border-gray-100">
                             {mg}
                           </span>
                         ))}
                       </div>
                     </div>
-                    <div className={cn(
-                      "px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider whitespace-nowrap",
-                      ex.difficulty === 'fácil' ? 'bg-green-50 text-green-600' :
-                      ex.difficulty === 'medio' ? 'bg-orange-50 text-orange-600' :
-                      'bg-red-50 text-red-600'
-                    )}>
-                      {ex.difficulty}
+                    <div className="flex flex-col items-end gap-2 shrink-0">
+                      <div className={cn(
+                        "px-2 py-1 rounded-lg text-[8px] font-black uppercase tracking-widest whitespace-nowrap",
+                        ex.difficulty === 'fácil' ? 'bg-green-50 text-green-600' :
+                        ex.difficulty === 'medio' ? 'bg-orange-50 text-orange-600' :
+                        'bg-red-50 text-red-600'
+                      )}>
+                        {ex.difficulty}
+                      </div>
+                      {ex.isCustom && (
+                        <div className="flex gap-2">
+                           <button 
+                             onClick={() => startEditExercise(ex)} 
+                             className="p-2 bg-indigo-50 text-indigo-500 rounded-xl active:scale-90 transition-transform"
+                           >
+                             <Pencil size={14} />
+                           </button>
+                           <button onClick={() => deleteCustomExercise(ex.id)} className="p-2 bg-red-50 text-red-500 rounded-xl active:scale-90 transition-transform">
+                             <Trash2 size={14} />
+                           </button>
+                        </div>
+                      )}
                     </div>
                   </div>
-                  <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                  <p className="text-xs text-gray-500 font-medium leading-relaxed line-clamp-2">
                     {ex.description}
                   </p>
-                  <button className="flex items-center gap-2 text-indigo-600 font-bold text-sm mt-1">
-                    <i className="f7-icons text-base">play_circle_fill</i> Ver tutorial
+                  <button className="flex items-center gap-2 text-indigo-600 font-bold text-[10px] uppercase tracking-widest mt-1">
+                    <PlayCircle size={14} /> Tutorial
                   </button>
                 </div>
               ))
             ) : (
-              <div className="text-center py-12 px-4">
-                <p className="text-gray-500 font-medium">No se encontraron ejercicios con esos filtros.</p>
+              <div className="text-center py-12 px-4 bg-white rounded-[32px] border border-dashed border-gray-200">
+                <p className="text-gray-400 font-bold text-sm">No se encontraron resultados.</p>
               </div>
             )}
           </div>
@@ -420,9 +496,9 @@ export default function ExerciseLibrary() {
           {isCreatingRoutine ? (
             <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm flex flex-col gap-5">
               <div className="flex justify-between items-center mb-2">
-                <h3 className="font-bold text-xl text-gray-900">Nueva Rutina</h3>
-                <button onClick={() => setIsCreatingRoutine(false)} className="text-gray-400 hover:text-gray-600">
-                   <i className="f7-icons text-2xl">xmark</i>
+                <h3 className="font-bold text-xl text-gray-900">{editingId ? 'Editar Rutina' : 'Nueva Rutina'}</h3>
+                <button onClick={() => { setIsCreatingRoutine(false); setEditingId(null); }} className="w-8 h-8 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 active:scale-90 transition-transform">
+                   <X size={16} />
                 </button>
               </div>
               
@@ -432,7 +508,7 @@ export default function ExerciseLibrary() {
                   type="text"
                   value={newRutName}
                   onChange={(e) => setNewRutName(e.target.value)}
-                  className="w-full bg-gray-50 border border-gray-200 rounded-xl py-3 px-4 text-gray-900 font-medium focus:outline-none focus:border-indigo-500"
+                  className="w-full !bg-gray-50 !border !border-gray-200 rounded-xl !py-3 !px-4 text-gray-900 font-medium focus:outline-none focus:border-indigo-500"
                   placeholder="Ej. Espalda Extrema"
                 />
               </div>
@@ -523,19 +599,19 @@ export default function ExerciseLibrary() {
                           <div className="mt-3 pl-8 grid grid-cols-4 gap-2">
                             <div>
                               <label className="block text-[10px] font-bold text-gray-500 mb-1">Series</label>
-                              <input type="number" value={rutEx.sets} onChange={(e) => setNewRutExercises(newRutExercises.map(r => r.exerciseId === ex.id ? { ...r, sets: Number(e.target.value) } : r))} className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-2 text-xs focus:outline-none focus:border-indigo-500" min="1" />
+                              <input type="number" value={rutEx.sets} onChange={(e) => setNewRutExercises(newRutExercises.map(r => r.exerciseId === ex.id ? { ...r, sets: Number(e.target.value) } : r))} className="w-full !bg-white !border !border-gray-200 rounded-lg !py-1.5 !px-2 text-xs focus:outline-none focus:border-indigo-500" min="1" />
                             </div>
                             <div>
                               <label className="block text-[10px] font-bold text-gray-500 mb-1">Reps</label>
-                              <input type="number" value={rutEx.reps} onChange={(e) => setNewRutExercises(newRutExercises.map(r => r.exerciseId === ex.id ? { ...r, reps: Number(e.target.value) } : r))} className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-2 text-xs focus:outline-none focus:border-indigo-500" min="0" />
+                              <input type="number" value={rutEx.reps} onChange={(e) => setNewRutExercises(newRutExercises.map(r => r.exerciseId === ex.id ? { ...r, reps: Number(e.target.value) } : r))} className="w-full !bg-white !border !border-gray-200 rounded-lg !py-1.5 !px-2 text-xs focus:outline-none focus:border-indigo-500" min="0" />
                             </div>
                             <div>
                               <label className="block text-[10px] font-bold text-gray-500 mb-1">T.(s)</label>
-                              <input type="number" value={rutEx.duration} onChange={(e) => setNewRutExercises(newRutExercises.map(r => r.exerciseId === ex.id ? { ...r, duration: Number(e.target.value) } : r))} className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-2 text-xs focus:outline-none focus:border-indigo-500" min="0" />
+                              <input type="number" value={rutEx.duration} onChange={(e) => setNewRutExercises(newRutExercises.map(r => r.exerciseId === ex.id ? { ...r, duration: Number(e.target.value) } : r))} className="w-full !bg-white !border !border-gray-200 rounded-lg !py-1.5 !px-2 text-xs focus:outline-none focus:border-indigo-500" min="0" />
                             </div>
                             <div>
                               <label className="block text-[10px] font-bold text-gray-500 mb-1">Desc(s)</label>
-                              <input type="number" value={rutEx.rest} onChange={(e) => setNewRutExercises(newRutExercises.map(r => r.exerciseId === ex.id ? { ...r, rest: Number(e.target.value) } : r))} className="w-full bg-white border border-gray-200 rounded-lg py-1.5 px-2 text-xs focus:outline-none focus:border-indigo-500" min="0" />
+                              <input type="number" value={rutEx.rest} onChange={(e) => setNewRutExercises(newRutExercises.map(r => r.exerciseId === ex.id ? { ...r, rest: Number(e.target.value) } : r))} className="w-full !bg-white !border !border-gray-200 rounded-lg !py-1.5 !px-2 text-xs focus:outline-none focus:border-indigo-500" min="0" />
                             </div>
                           </div>
                         )}
@@ -550,72 +626,140 @@ export default function ExerciseLibrary() {
                 disabled={!newRutName || newRutExercises.length === 0}
                 className="w-full mt-2 bg-[#D4F87A] text-[#1a2e00] rounded-[20px] py-4 font-bold text-sm active:scale-95 transition-transform disabled:opacity-50 disabled:active:scale-100 shadow-sm"
               >
-                Guardar Rutina
+                {editingId ? 'Actualizar Rutina' : 'Guardar Rutina'}
               </button>
             </div>
           ) : (
-            <div className="grid gap-4">
+            <div className="space-y-6">
+              {/* Routine Level Filter */}
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide pb-1 -mx-1 px-1">
+                {(['todos', 'Principiante', 'Intermedio', 'Avanzado'] as const).map(lvl => (
+                  <button
+                    key={lvl}
+                    onClick={() => setActiveLevel(lvl)}
+                    className={cn(
+                      "px-5 py-2.5 rounded-full text-[10px] font-bold uppercase tracking-widest whitespace-nowrap transition-all border",
+                      activeLevel === lvl
+                        ? "bg-gray-900 text-white shadow-md border-gray-900"
+                        : "bg-white text-gray-400 border-gray-100 shadow-sm"
+                    )}
+                  >
+                    {lvl}
+                  </button>
+                ))}
+              </div>
+
               <button
-                onClick={() => setIsCreatingRoutine(true)}
-                className="w-full bg-white border border-gray-200 text-gray-900 rounded-[20px] py-3.5 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform mb-2"
+                onClick={() => { setIsCreatingRoutine(true); setEditingId(null); }}
+                className="w-full bg-white border border-gray-200 text-gray-900 rounded-[24px] py-4 font-bold text-sm flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-sm"
               >
-                <i className="f7-icons text-lg">plus</i> Crear Rutina Personalizada
+                <Plus size={18} /> Crear Rutina Personalizada
               </button>
 
-              {ALL_ROUTINES.map(routine => (
-            <div key={routine.id} className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-sm flex flex-col gap-4">
-              <div className="flex justify-between items-start">
-                <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <span className="bg-gray-100 text-gray-600 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider">
-                      {routine.environment === 'gym' ? 'Gimnasio' : 'Parque/Casa'}
-                    </span>
-                    <span className="bg-orange-50 text-orange-600 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider">
-                      {routine.level}
-                    </span>
-                  </div>
-                  <h3 className="font-bold text-xl text-gray-900 leading-tight">{routine.name}</h3>
-                </div>
-              </div>
-              <p className="text-sm text-gray-500 font-medium leading-relaxed">
-                {routine.description}
-              </p>
-              <div className="mt-2">
-                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">Circuito de {routine.exercises.length} Ejercicios:</h4>
-                <div className="space-y-2">
-                  {routine.exercises.map((routEx, idx) => {
-                    const exercise = ALL_EXERCISES.find(e => e.id === routEx.exerciseId);
-                    if (!exercise) return null;
-                    return (
-                      <div key={`${routine.id}-${routEx.exerciseId}-${idx}`} className="flex items-center gap-3 bg-gray-50 p-3 rounded-[16px]">
-                        <div className="w-6 h-6 rounded-full bg-white flex items-center justify-center text-xs font-bold text-gray-400 shadow-sm shrink-0">
-                          {idx + 1}
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-gray-900 text-sm leading-tight">{exercise.name}</span>
-                          <span className="text-xs text-gray-500 font-medium mt-0.5">
-                            {routEx.sets} series x {routEx.reps ? `${routEx.reps} reps` : `${routEx.duration}s`} {routEx.rest ? `· ${routEx.rest}s desc.` : ''}
-                          </span>
+              <div className="grid gap-4">
+                {filteredRoutines.map(routine => (
+                  <div 
+                    key={routine.id} 
+                    onClick={() => setSelectedRoutine(routine)}
+                    className="bg-white p-5 rounded-[32px] border border-gray-100 shadow-sm flex items-center justify-between gap-4 cursor-pointer active:scale-[0.98] transition-all"
+                  >
+                    <div className="flex items-center gap-4">
+                      <div className="w-14 h-14 rounded-2xl bg-gray-50 flex items-center justify-center text-gray-400 shrink-0 border border-gray-100">
+                        <Flame size={24} className={routine.level === 'Avanzado' ? 'text-orange-500' : 'text-gray-400'} />
+                      </div>
+                      <div>
+                        <h3 className="font-bold text-gray-900 text-lg leading-tight">{routine.name}</h3>
+                        <div className="flex items-center gap-2 mt-1">
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{routine.level}</span>
+                          <span className="w-1 h-1 rounded-full bg-gray-300" />
+                          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">{routine.exercises.length} Ejercicios</span>
                         </div>
                       </div>
-                    );
-                  })}
-                </div>
+                    </div>
+                    <div className="shrink-0 flex items-center gap-2">
+                      {routine.isCustom && (
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); startEditRoutine(routine); }} 
+                          className="p-2 bg-indigo-50 text-indigo-500 rounded-xl active:scale-90 transition-transform"
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      )}
+                      <div className="w-8 h-8 rounded-full bg-gray-50 flex items-center justify-center text-gray-400">
+                         <Plus size={16} />
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              <button 
-                onClick={() => {
-                  useAppStore.getState().setActiveRoutine(routine);
-                  router.push('/activity?type=gym');
-                }}
-                className="w-full mt-2 bg-gray-900 text-white rounded-[20px] py-3.5 font-bold text-sm active:scale-95 transition-transform"
-              >
-                Comenzar Rutina
-              </button>
             </div>
-          ))}
-        </div>
           )}
         </>
+      )}
+
+      {/* Routine Detail Modal */}
+      {selectedRoutine && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+          <div className="bg-white w-full max-w-lg rounded-[40px] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+             {/* Modal Header */}
+             <div className="p-8 pb-4 relative">
+                <button 
+                  onClick={() => setSelectedRoutine(null)}
+                  className="absolute top-6 right-6 w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 hover:text-gray-600 active:scale-90 transition-transform"
+                >
+                   <X size={20} />
+                </button>
+                <div className="flex items-center gap-3 mb-3">
+                   <span className="px-3 py-1 rounded-lg bg-orange-50 text-orange-600 text-[10px] font-bold uppercase tracking-widest">
+                     {selectedRoutine.level}
+                   </span>
+                   <span className="px-3 py-1 rounded-lg bg-gray-100 text-gray-600 text-[10px] font-bold uppercase tracking-widest">
+                     {selectedRoutine.environment === 'gym' ? 'Gimnasio' : 'Casa/Parque'}
+                   </span>
+                </div>
+                <h2 className="text-3xl font-black text-gray-900 leading-tight mb-2">{selectedRoutine.name}</h2>
+                <p className="text-sm text-gray-500 font-medium leading-relaxed">
+                  {selectedRoutine.description}
+                </p>
+             </div>
+
+             {/* Modal Content - Exercise List */}
+             <div className="flex-1 overflow-y-auto p-8 pt-2 space-y-3">
+                <h4 className="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-4">Circuito de Entrenamiento</h4>
+                {selectedRoutine.exercises.map((routEx, idx) => {
+                  const exercise = ALL_EXERCISES.find(e => e.id === routEx.exerciseId);
+                  if (!exercise) return null;
+                  return (
+                    <div key={`${selectedRoutine.id}-${routEx.exerciseId}-${idx}`} className="flex items-center gap-4 bg-gray-50 p-4 rounded-[24px] border border-gray-100/50">
+                      <div className="w-8 h-8 rounded-xl bg-white flex items-center justify-center text-xs font-black text-gray-400 shadow-sm shrink-0">
+                        {idx + 1}
+                      </div>
+                      <div className="flex flex-col">
+                        <span className="font-bold text-gray-900 text-base leading-tight">{exercise.name}</span>
+                        <span className="text-[10px] font-bold text-indigo-500 uppercase tracking-widest mt-1">
+                          {routEx.sets} series x {routEx.reps ? `${routEx.reps} reps` : `${routEx.duration}s`} {routEx.rest ? `· ${routEx.rest}s desc.` : ''}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+             </div>
+
+             {/* Modal Footer */}
+             <div className="p-8 bg-gray-50 border-t border-gray-100">
+                <button 
+                  onClick={() => {
+                    useAppStore.getState().setActiveRoutine(selectedRoutine);
+                    router.push('/activity?type=gym');
+                    setSelectedRoutine(null);
+                  }}
+                  className="w-full bg-gray-900 text-white rounded-[24px] py-4 font-bold text-sm shadow-xl active:scale-[0.98] transition-all flex items-center justify-center gap-2"
+                >
+                   <Flame size={18} className="text-[#D4F87A]" /> Comenzar Rutina Ahora
+                </button>
+             </div>
+          </div>
+        </div>
       )}
     </div>
   );
